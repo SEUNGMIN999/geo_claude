@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>지층 탐정단</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=Gaegu:wght@400;700&display=swap">
+<style>
+/* 레이아웃: 큰 수채화 장면(왼쪽) + 탐정 안내 패널(오른쪽), 좁은 화면에서는 위아래로 쌓임 */
+:root{
+  --paper:#edf1ec; --paper-2:#e1e8e2; --card:#fbfcf8; --ink:#25374a; --ink-soft:#56687a; --line:#c6d0ca;
+  --sepia:#7a4a2a; --sepia-2:#9b6440;
+  --fact:#2f6fa3; --fact-bg:#dde9f4; --inf:#b9621a; --inf-bg:#f7e4cd; --why:#3d7a4c; --why-bg:#dcede0;
+  --ok:#3d8150; --hint:#a8492a; --hint-bg:#f8e3da;
+  --f-display:"Jua","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-body:"Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --f-hand:"Gaegu","Gowun Dodum","Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{display:flex;flex-direction:column;height:100dvh;overflow:hidden}
+body{
+  margin:0; font-family:var(--f-body); color:var(--ink); font-size:16px; line-height:1.5;
+  background-color:var(--paper);
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .3  0 0 0 0 .32  0 0 0 0 .28  0 0 0 .07 0'/></filter><rect width='240' height='240' filter='url(%23n)'/></svg>");
+}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--fact);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;text-wrap:balance;margin:0;line-height:1.25}
+
+/* 상단 바 */
+.topbar{position:relative;flex:none;z-index:20;display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:8px 16px;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
+.brand{font-family:var(--f-display);font-size:22px;color:var(--sepia);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.brand small{font-family:var(--f-body);font-size:13px;color:var(--ink-soft)}
+.steps{display:flex;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.step{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:5px 12px 5px 6px;display:flex;align-items:center;gap:6px;cursor:pointer;font-size:15px}
+.step .n{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;background:var(--paper-2);font-family:var(--f-display);font-size:14px}
+.step[aria-current="step"]{border-color:var(--sepia);background:#f6ead9}
+.step[aria-current="step"] .n{background:var(--sepia);color:#fff}
+.step.done .n{background:var(--ok);color:#fff}
+.step:disabled{opacity:.45;cursor:not-allowed}
+@media (max-width:1200px){.brand small{display:none}.step:not([aria-current]) .lbl{display:none}.step{padding-right:6px}}
+.nb-btn{display:flex;align-items:center;gap:8px;border:2px solid var(--sepia);background:#fff8ee;color:var(--sepia);border-radius:12px;padding:6px 12px;cursor:pointer;font-family:var(--f-display);font-size:17px}
+.nb-btn .cnt{background:var(--sepia);color:#fff;border-radius:999px;font-size:13px;padding:0 8px;font-family:var(--f-body)}
+
+main{flex:1;min-height:0;width:100%;padding:12px 16px;padding-block:12px}
+main.scroll{overflow:auto}
+
+/* 단계 화면 */
+.stage{--sar:1.4286;display:grid;height:100%;grid-template-columns:min(calc((100dvh - 84px) * var(--sar)),calc(100% - 390px)) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:14px}
+.stage.tank{--sar:1.5385}.stage.board-stage{grid-template-columns:minmax(0,1fr) clamp(330px,34vw,520px)}
+@media (max-width:900px){.stage,.stage.board-stage{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,42%) minmax(0,1fr)}}
+.scene-col{min-width:0;min-height:0;container-type:size;display:flex;align-items:center;justify-content:center}
+.scene{--ar:1.4286;width:min(100cqw,calc(100cqh * var(--ar)));aspect-ratio:var(--ar);position:relative;border-radius:18px;overflow:hidden;background:#f7f8f3;box-shadow:0 2px 0 var(--line),0 10px 30px -18px #2a3b4a80}
+.scene svg,.scene canvas.main{display:block;width:100%;height:100%}
+.scene-cap{position:absolute;left:10px;bottom:10px;right:10px;margin:0;font-size:13px;color:var(--ink);display:flex;gap:6px;flex-wrap:wrap;pointer-events:none}
+.scene-cap span{background:#fbf8f0e8;border-radius:8px;padding:2px 9px}
+.lens{position:absolute;width:150px;height:150px;border-radius:50%;pointer-events:none;border:6px solid #c99a3a;box-shadow:0 0 0 2px #fff,0 8px 20px #0005;background:#fff}
+.lens-tag{position:absolute;pointer-events:none;background:#c99a3a;color:#fff;font-size:12px;border-radius:8px;padding:1px 6px}
+.panel{min-width:0;min-height:0;overflow:auto;display:flex;flex-direction:column;gap:9px;padding-right:4px}
+
+.guide{display:flex;gap:10px;align-items:flex-end}
+.guide .det{width:62px;flex:none}
+.scene .guide{position:absolute;top:8px;left:10px;right:10px;z-index:3;pointer-events:none;align-items:flex-start}
+.scene .guide .det{width:clamp(44px,6vh,60px)}
+.scene .bubble{margin:4px 0 0;flex:0 1 auto;max-width:min(600px,82%);font-size:15px;line-height:1.4;padding:6px 12px;background:#fbf8f0f2;border-radius:4px 16px 16px 16px;pointer-events:auto;box-shadow:0 4px 14px -6px #0004}
+.board .guide{flex:none}.board .bubble{margin:0;font-size:15px}
+.bubble{position:relative;flex:1;min-width:0;background:var(--card);border:2px solid var(--ink);border-radius:18px 18px 18px 4px;padding:7px 12px;font-size:16px;margin:0 0 10px}
+.bubble.hinting{border-color:var(--hint);background:var(--hint-bg)}
+.bubble .lbl{display:block;font-family:var(--f-display);font-size:14px;color:var(--hint)}
+
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:7px}
+.card h3{font-size:18px;display:flex;align-items:center;gap:8px}
+.small{font-size:14px;color:var(--ink-soft);margin:0}
+.caution{border:1.5px dashed var(--inf);background:#fff6ea;border-radius:12px;padding:6px 10px;font-size:13px;line-height:1.4}
+.caution b{font-family:var(--f-display);font-weight:400;color:var(--inf)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:2px solid var(--ink);background:#fff;border-radius:11px;padding:5px 11px;cursor:pointer;font-size:15px}
+.btn:hover{background:var(--paper-2)}
+.btn.primary{background:var(--sepia);border-color:var(--sepia);color:#fff;font-family:var(--f-display);font-size:17px;padding:6px 16px}
+.btn.primary:hover{background:var(--sepia-2)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.tool{display:flex;align-items:center;gap:6px}
+.btn.tool[aria-pressed="true"]{background:#f6e3b8;border-color:#c99a3a}
+.ltag{display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--ink);color:#fff;font-family:var(--f-display);font-size:18px;flex:none}
+.zoom{width:auto;max-width:100%;height:auto;max-height:22vh;align-self:center;border-radius:12px;border:4px solid #c99a3a}
+.grp{display:grid;grid-template-columns:3.4em minmax(0,1fr);gap:4px 6px;align-items:start}
+.grp>span{font-family:var(--f-display);font-size:15px;padding-top:3px}
+.grp>.hint,.grp>.opts:only-child{grid-column:1/-1}
+.grp.stack{display:flex;flex-direction:column}
+.opts{display:flex;gap:5px;flex-wrap:wrap}
+.opt{border:2px solid var(--line);background:#fff;border-radius:9px;padding:3px 8px;cursor:pointer;font-size:14px;text-align:left;display:flex;align-items:center;gap:6px}
+.opt[aria-pressed="true"]{border-color:var(--fact);background:var(--fact-bg)}
+.opt.ok{border-color:var(--ok);background:#e2f1e6}
+.opt:disabled{cursor:default}
+.sw{width:18px;height:18px;border-radius:5px;border:1px solid #0003;flex:none}
+.hint{background:var(--hint-bg);color:var(--hint);border-radius:9px;padding:4px 9px;font-size:13.5px;line-height:1.4}
+.hint::before{content:"다시 살펴볼 단서 · ";font-family:var(--f-display)}
+.hint.s{padding:2px 8px}.hint.s::before{content:"↻ "}
+.okmsg{color:var(--ok);font-size:15px}
+.progress{height:10px;background:var(--paper-2);border-radius:99px;overflow:hidden}
+.progress i{display:block;height:100%;background:var(--ok);border-radius:99px;transition:width .4s}
+
+/* 사실 · 추론 · 근거 구분 */
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:1px 9px;font-size:13px;font-family:var(--f-display);white-space:nowrap}
+.chip.fact{background:var(--fact);color:#fff}
+.chip.inf{background:var(--inf);color:#fff}
+.chip.why{background:var(--why);color:#fff}
+.note{border-left:5px solid;border-radius:6px 12px 12px 6px;padding:5px 10px;font-family:var(--f-hand);font-size:18px;line-height:1.3}
+.note.fact{border-color:var(--fact);background:var(--fact-bg)}
+.note.inf{border-color:var(--inf);background:var(--inf-bg)}
+.note small{display:block;font-family:var(--f-body);font-size:12px;color:var(--ink-soft)}
+
+/* 관찰 수첩 */
+.drawer{position:fixed;inset:0 0 0 auto;width:min(440px,100%);z-index:40;background:#fffdf6;border-left:2px solid var(--sepia);box-shadow:-20px 0 40px -20px #0006;
+  display:flex;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.drawer header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(transparent 0 31px,#cfdbe6 31px 32px)}
+.drawer h2{color:var(--sepia);font-size:24px}
+.drawer .body{overflow:auto;padding:14px 16px 24px;display:flex;flex-direction:column;gap:16px;
+  background:repeating-linear-gradient(#fffdf6 0 33px,#dbe5ee 33px 34px)}
+.drawer section{display:flex;flex-direction:column;gap:8px}
+.drawer h3{font-size:18px;display:flex;align-items:center;gap:8px}
+.scrim{position:fixed;inset:0;background:#1a26334d;z-index:39}
+
+/* 3단계 */
+.slots{display:flex;flex-direction:column;gap:5px}
+.slot{display:flex;align-items:center;gap:10px;border:2px dashed var(--line);border-radius:11px;padding:2px 9px;min-height:36px;background:#fff;cursor:pointer;text-align:left;width:100%}
+.slot .pos{font-family:var(--f-display);font-size:14px;color:var(--ink-soft);width:120px;flex:none}
+.slot.filled{border-style:solid;border-color:var(--ink)}
+.slot.bad{border-color:var(--hint);background:var(--hint-bg)}
+.slot.good{border-color:var(--ok);background:#e2f1e6}
+.pool{display:flex;gap:8px;flex-wrap:wrap}
+.lcard{display:flex;align-items:center;gap:8px;border:2px solid var(--ink);border-radius:11px;padding:3px 9px;background:#fff;cursor:grab;font-size:14px;text-align:left}
+.lcard[aria-pressed="true"]{outline:3px solid #c99a3a;outline-offset:2px;background:#fff6dc}
+.lcard .sw{width:22px;height:22px}
+
+/* 5단계 보고서 보드 */
+.board{width:100%;height:100%;overflow:auto;background:#fbf8ef;border-radius:18px;padding:14px;display:flex;flex-direction:column;justify-content:center;gap:10px;box-shadow:0 2px 0 var(--line),0 10px 30px -18px #2a3b4a80;
+  background-image:repeating-linear-gradient(#fbf8ef 0 35px,#e3e9ee 35px 36px)}
+.board-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.board h2{font-size:28px;color:var(--sepia)}
+.legend{display:flex;gap:6px;flex-wrap:wrap}
+.chain{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);gap:8px;align-items:stretch;background:#ffffffc0;border-radius:14px;padding:10px;border:2px solid transparent}
+.chain.good{border-color:var(--ok)} .chain.bad{border-color:var(--hint)}
+.arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--f-display);font-size:13px;color:var(--ink-soft)}
+.arrow b{font-size:24px;line-height:1;color:var(--ink)}
+@media (max-width:640px){.chain{grid-template-columns:minmax(0,1fr)}.arrow{flex-direction:row;gap:6px}.arrow b{transform:rotate(90deg)}}
+.cslot{border:2px dashed;border-radius:12px;padding:6px 9px;min-height:74px;background:#fff;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:4px;font-size:15px;line-height:1.4}
+.cslot.fact{border-color:var(--fact)} .cslot.inf{border-color:var(--inf)} .cslot.why{border-color:var(--why)}
+.cslot.filled{border-style:solid}
+.cslot.fact.filled{background:var(--fact-bg)} .cslot.inf.filled{background:var(--inf-bg)} .cslot.why.filled{background:var(--why-bg)}
+.cslot .ph{color:var(--ink-soft);font-size:14px}
+.ccard{border:2px solid;border-radius:10px;padding:8px 10px;background:#fff;cursor:pointer;text-align:left;font-size:15px;line-height:1.4;display:flex;flex-direction:column;gap:4px;width:100%}
+.ccard.fact{border-color:var(--fact)} .ccard.inf{border-color:var(--inf)} .ccard.why{border-color:var(--why)}
+.ccard[aria-pressed="true"]{outline:3px solid #c99a3a;outline-offset:2px;background:#fff6dc}
+.cpool{display:flex;flex-direction:column;gap:6px}
+.tab{flex:1;font-family:var(--f-display);border-width:2px;padding:4px 6px}
+.tab.fact{border-color:var(--fact);color:var(--fact)}.tab.inf{border-color:var(--inf);color:var(--inf)}.tab.why{border-color:var(--why);color:var(--why)}
+.tab.fact[aria-selected="true"]{background:var(--fact);color:#fff}.tab.inf[aria-selected="true"]{background:var(--inf);color:#fff}.tab.why[aria-selected="true"]{background:var(--why);color:#fff}
+.tab[aria-selected="true"] .small{color:#fff}
+.cslot.target{outline:3px solid #c99a3a;outline-offset:2px;background:#fff6dc}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-family:var(--f-display);font-size:16px}
+.field input,.field textarea{font:inherit;font-size:17px;border:2px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff;color:var(--ink);width:100%}
+.field textarea{min-height:80px;resize:vertical}
+
+/* 인트로 */
+.intro{display:grid;height:100%;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);grid-template-rows:minmax(0,1fr);gap:24px;align-items:center;max-width:1500px;margin:0 auto}
+.intro .scene-col{height:100%}
+.intro-txt{display:flex;flex-direction:column;gap:clamp(6px,1.6vh,16px);min-height:0}
+@media (max-width:900px){.intro{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,45%) auto}}
+.intro h1{font-size:clamp(38px,min(6vw,9vh),84px);color:var(--sepia);line-height:1.05}
+.intro h1 span{display:block;font-size:.42em;color:var(--ink);margin-top:8px}
+.intro .story{font-size:clamp(16px,2.2vh,20px);display:flex;flex-direction:column;gap:6px}
+.intro ol{margin:0;padding-left:22px;display:flex;flex-wrap:wrap;gap:4px 18px;font-size:16px}
+.intro .det-big{width:clamp(90px,min(16vw,22vh),200px)}
+
+/* 결과 보고서 */
+.report{max-width:1400px;margin:0 auto;background:#fffdf7;border-radius:6px;padding:12px clamp(14px,2.2vw,28px);box-shadow:0 14px 40px -20px #0006;display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.rcols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:22px;align-items:start}
+.rcols>div{display:flex;flex-direction:column;gap:9px;min-width:0}
+@media (max-width:900px){.rcols{grid-template-columns:minmax(0,1fr)}}
+.report .note{font-size:15px;padding:3px 9px}
+.report table{font-size:13px}
+.report th,.report td{padding:3px 7px}
+.report section{display:flex;flex-direction:column;gap:5px}
+.report .rchain{font-size:12.5px;line-height:1.35}
+.report .rchain>div{padding:4px 7px}
+.report header{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px double var(--sepia);padding-bottom:8px;flex-wrap:wrap}
+.report h1{font-size:25px;color:var(--sepia)}
+.report h2{font-size:16px;border-bottom:1px solid var(--line);padding-bottom:4px}
+.stamp{border:3px solid #b23a2a;color:#b23a2a;font-family:var(--f-display);border-radius:10px;padding:2px 10px;transform:rotate(-6deg);font-size:16px;margin-left:6px}
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left}
+th{background:var(--paper-2);font-family:var(--f-display);font-weight:400}
+.rchain{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;font-size:15px}
+@media (max-width:640px){.rchain{grid-template-columns:minmax(0,1fr)}}
+.rchain>div{border-radius:8px;padding:6px 8px}
+.rchain>.fact{background:var(--fact-bg)} .rchain>.inf{background:var(--inf-bg)} .rchain>.why{background:var(--why-bg)}
+.col-mini{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ok);color:#fff;font-family:var(--f-display);font-size:19px;padding:10px 20px;border-radius:999px;z-index:60;box-shadow:0 8px 20px #0003;max-width:calc(100% - 32px);text-align:center}
+
+/* SVG 상호작용 */
+.layer{cursor:pointer;outline:none}
+.layer .hl{fill:none;stroke:transparent;stroke-width:5}
+.layer:hover .hl,.layer:focus-visible .hl{stroke:#fff;stroke-dasharray:10 6}
+.layer.sel .hl{stroke:#f2c14e;stroke-width:6;stroke-dasharray:none}
+.layer .chk{display:none} .layer.done .chk{display:inline}
+.hot{cursor:pointer;outline:none}
+.hot .ring{fill:none;stroke:#f2c14e;stroke-width:4;animation:pulse 1.6s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.hot.done .ring{stroke:var(--ok);animation:none}
+.hot:focus-visible .ring{stroke:#fff}
+@keyframes pulse{50%{transform:scale(1.18);opacity:.5}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+@media print{
+  body{background:#fff;font-size:13px}
+  body{display:block;height:auto;overflow:visible} main{overflow:visible}
+  .actions .btn,.topbar,.toast,.drawer,.scrim,.no-print{display:none!important}
+  main{padding:0}
+  .report{box-shadow:none;padding:0;max-width:none}
+  .rchain>div,.note,th{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  section{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="wc" x="-4%" y="-4%" width="108%" height="108%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="3" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="8" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="0.7"/>
+    </filter>
+    <filter id="wc-soft" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="2" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="paint" x="-8%" y="-8%" width="116%" height="116%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="8" result="n1"/>
+      <feDisplacementMap in="SourceGraphic" in2="n1" scale="2.2" xChannelSelector="R" yChannelSelector="G" result="wob"/>
+      <feTurbulence type="fractalNoise" baseFrequency="0.7" numOctaves="2" seed="3" result="n2"/>
+      <feColorMatrix in="n2" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -0.8 1.15" result="gr"/>
+      <feComposite in="wob" in2="gr" operator="in" result="tex"/>
+      <feMorphology in="wob" operator="erode" radius="1.2" result="er"/>
+      <feComposite in="wob" in2="er" operator="out" result="rim"/>
+      <feComponentTransfer in="rim" result="rimD"><feFuncR type="linear" slope=".55"/><feFuncG type="linear" slope=".55"/><feFuncB type="linear" slope=".55"/><feFuncA type="linear" slope=".6"/></feComponentTransfer>
+      <feMerge><feMergeNode in="tex"/><feMergeNode in="rimD"/></feMerge>
+    </filter>
+    <radialGradient id="glass" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#f2fafc" stop-opacity=".95"/><stop offset="1" stop-color="#9ccbd8" stop-opacity=".7"/></radialGradient>
+    <filter id="bleed" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="6"/></filter>
+    <pattern id="pat-gravel" width="74" height="46" patternUnits="userSpaceOnUse">
+      <ellipse cx="14" cy="12" rx="10" ry="7" fill="#ffffff22" stroke="#00000033" stroke-width="1.5"/>
+      <ellipse cx="44" cy="20" rx="13" ry="9" fill="#00000014" stroke="#00000033" stroke-width="1.5"/>
+      <ellipse cx="64" cy="38" rx="8" ry="6" fill="#ffffff26" stroke="#00000030" stroke-width="1.5"/>
+      <ellipse cx="22" cy="36" rx="9" ry="6" fill="#0000000f" stroke="#00000030" stroke-width="1.5"/>
+      <circle cx="58" cy="6" r="4" fill="#ffffff22" stroke="#0000002a"/>
+    </pattern>
+    <pattern id="pat-sand" width="14" height="14" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="3" r="1" fill="#00000030"/><circle cx="9" cy="2" r=".8" fill="#ffffff55"/>
+      <circle cx="6" cy="8" r="1" fill="#00000026"/><circle cx="12" cy="11" r=".9" fill="#00000030"/>
+      <circle cx="3" cy="12" r=".8" fill="#ffffff44"/>
+    </pattern>
+    <pattern id="pat-mud" width="60" height="9" patternUnits="userSpaceOnUse">
+      <path d="M0 4 Q15 3 30 4.5 T60 4" stroke="#0000001f" fill="none" stroke-width="1"/>
+    </pattern>
+  </defs>
+</svg>
+
+<header class="topbar" id="topbar" hidden>
+  <div class="brand">지층 탐정단 <small>사라진 시간의 단서</small></div>
+  <nav class="steps" id="steps" aria-label="탐사 단계"></nav>
+  <button class="nb-btn" id="nbBtn" type="button" aria-haspopup="dialog">관찰 수첩 <span class="cnt" id="nbCnt">0</span></button>
+</header>
+<main id="app"></main>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="nbTitle" hidden>
+  <header><h2 id="nbTitle">관찰 수첩</h2><button class="btn" id="nbClose" type="button">닫기</button></header>
+  <div class="body" id="nbBody"></div>
+</aside>
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+"use strict";
+/* ---------- 기본 도구 ---------- */
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function shade(hex,amt){const n=parseInt(hex.slice(1),16);let r=n>>16,g=n>>8&255,b=n&255;
+  const f=v=>Math.max(0,Math.min(255,Math.round(amt<0?v*(1+amt):v+(255-v)*amt)));return`rgb(${f(r)},${f(g)},${f(b)})`}
+function shuffle(a,seed){const R=rng(seed);a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+/* ---------- 지층 자료 (아래 → 위) ---------- */
+const LAYERS=[
+  {L:"라",color:"회갈색",hex:"#8f8273",t:2.4,thick:"thick",grain:"gravel"},
+  {L:"마",color:"붉은 갈색",hex:"#a9634a",t:1.4,thick:"mid",grain:"sand"},
+  {L:"가",color:"짙은 회색",hex:"#646b74",t:0.8,thick:"thin",grain:"mud",fossil:"shell"},
+  {L:"나",color:"노란 갈색",hex:"#caa461",t:1.7,thick:"mid",grain:"sand",ripple:true},
+  {L:"다",color:"연한 회색",hex:"#bfbaae",t:0.7,thick:"thin",grain:"mud",fossil:"leaf"}
+];
+const COLOR_OPTS=["회갈색","붉은 갈색","짙은 회색","노란 갈색","연한 회색"];
+const COLOR_HEX={"회갈색":"#8f8273","붉은 갈색":"#a9634a","짙은 회색":"#646b74","노란 갈색":"#caa461","연한 회색":"#bfbaae"};
+const THICK={thin:{n:"얇다",d:"1 m보다 얇음"},mid:{n:"중간",d:"1~2 m"},thick:{n:"두껍다",d:"2 m보다 두꺼움"}};
+const GRAIN={gravel:{n:"자갈",d:"콩알보다 큼"},sand:{n:"모래",d:"콩알보다 작지만 보임"},mud:{n:"진흙",d:"너무 작아 잘 안 보임"}};
+const SC=60, BASE=510, X0=80;
+const cum=[];LAYERS.reduce((s,l,i)=>(cum[i]=s+l.t,s+l.t),0);
+const topY=i=>BASE-cum[i]*SC, botY=i=>i===0?BASE:topY(i-1);
+const wav=(y,x,k)=>y+3*Math.sin(x/70+k*1.3)+1.5*Math.sin(x/23+k);
+const rightX=y=>722+12*Math.sin(y/38)+6*Math.sin(y/13);
+
+/* ---------- 상태 ---------- */
+const S={
+  stage:0, unlocked:1, done:{},
+  lookAgain:0, notes:[], tool:false,
+  s1:{sel:null,draft:{},ok:{},hint:{},rec:{}},
+  s2:{pours:[],mixed:false,pressed:false,q:{}},
+  s3:{slots:[null,null,null,null,null],pick:null,bad:[],ok:false,concept:null,conceptHint:""},
+  s4:{sel:null,f:{shell:{step:0,id:null,clues:[],env:null,hint:""},leaf:{step:0,id:null,clues:[],env:null,hint:""}},q:null,qHint:""},
+  s5:{rows:[[null,null,null],[null,null,null],[null,null,null]],pick:null,res:[null,null,null],ok:false,name:"",say:""}
+};
+function addNote(type,stage,text,key){if(S.notes.some(n=>n.key===key))return;S.notes.push({type,stage,text,key});updateNbCount()}
+
+/* ---------- 탐정 캐릭터 ---------- */
+function detSVG(mood="happy",cls="det"){
+  const think=mood==="think";
+  const brows=think
+    ?'<path d="M52 72 Q57 67 63 71"/><path d="M77 70 Q83 67 88 72"/>'
+    :'<path d="M52 71 Q57 68 62 70"/><path d="M78 70 Q83 68 88 71"/>';
+  const mouth=think
+    ?'<path d="M64 98 Q70 95 76 98" fill="none" stroke="#4a3426" stroke-width="1.6" stroke-linecap="round"/>'
+    :'<path d="M61 94 Q70 103 79 94 Q70 98 61 94Z" fill="#c9604f" stroke="#4a3426" stroke-width="1.3" stroke-linejoin="round"/>';
+  return `<svg viewBox="0 0 140 172" class="${cls}" aria-hidden="true">
+  <ellipse cx="70" cy="166" rx="42" ry="5" fill="#3a3024" opacity=".13"/>
+  <g filter="url(#paint)">
+    <path d="M30 168 C30 134 44 118 70 116 C96 118 110 134 110 168Z" fill="#c9a26a"/>
+    <path d="M70 116 L50 125 L62 152 L70 132Z" fill="#b08650"/><path d="M70 116 L90 125 L78 152 L70 132Z" fill="#b08650"/>
+    <path d="M33 149 L107 149 L108 156 L32 156Z" fill="#8f6a3e"/>
+    <path d="M62 116 L70 134 L78 116 Q70 112 62 116Z" fill="#f3ede0"/>
+    <path d="M57 115 Q70 124 83 115 L85 122 Q70 132 55 122Z" fill="#c4553f"/>
+    <path d="M77 124 L84 147 L75 145Z" fill="#b84a36"/>
+    <path d="M94 126 Q112 128 120 136 L113 145 Q104 137 91 137Z" fill="#c9a26a"/>
+    <ellipse cx="38" cy="87" rx="6" ry="8" fill="#f0c7a4"/><ellipse cx="102" cy="87" rx="6" ry="8" fill="#f0c7a4"/>
+    <circle cx="70" cy="84" r="32" fill="#f6d6b9"/>
+    <path d="M70 116 Q48 114 41 98 Q56 110 70 110 Q84 110 99 98 Q92 114 70 116Z" fill="#e9bf9c" opacity=".55"/>
+    <path d="M39 76 Q42 60 56 62 Q49 69 45 82Z" fill="#5a3a28"/><path d="M101 76 Q98 60 84 62 Q91 69 95 82Z" fill="#5a3a28"/>
+    <path d="M36 68 C34 33 106 33 104 68Z" fill="#8c7b52"/>
+    <path d="M27 68 Q70 55 113 68 Q101 77 70 74 Q39 77 27 68Z" fill="#6c5d3a"/>
+    <path d="M63 38 Q70 29 79 36 Q71 41 63 38Z" fill="#6c5d3a"/>
+  </g>
+  <clipPath id="hatclip-${cls}"><path d="M36 68 C34 33 106 33 104 68Z"/></clipPath>
+  <g clip-path="url(#hatclip-${cls})" stroke="#4a3d22" stroke-width="1" opacity=".35">
+    <path d="M30 44 L110 44 M30 54 L110 54 M30 62 L110 62 M50 30 L50 70 M64 30 L64 70 M78 30 L78 70 M92 30 L92 70"/>
+  </g>
+  <circle cx="54" cy="94" r="6.5" fill="#f2a08c" opacity=".45"/><circle cx="86" cy="94" r="6.5" fill="#f2a08c" opacity=".45"/>
+  <ellipse cx="59" cy="84" rx="3.6" ry="4.5" fill="#2b2a33"/><ellipse cx="81" cy="84" rx="3.6" ry="4.5" fill="#2b2a33"/>
+  <circle cx="60.3" cy="82.4" r="1.3" fill="#fff"/><circle cx="82.3" cy="82.4" r="1.3" fill="#fff"/>
+  <g fill="none" stroke="#5a3a28" stroke-width="2.2" stroke-linecap="round">${brows}</g>
+  <path d="M69 88 Q72 91 68 93" fill="none" stroke="#c4886a" stroke-width="1.5" stroke-linecap="round"/>
+  ${mouth}
+  <g fill="none" stroke="#4a3426" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" filter="url(#wc-soft)" opacity=".85">
+    <path d="M30 168 C30 134 44 118 70 116 C96 118 110 134 110 168"/>
+    <path d="M70 116 L50 125 L62 152 M70 116 L90 125 L78 152"/>
+    <circle cx="70" cy="84" r="32"/>
+    <path d="M36 68 C34 33 106 33 104 68"/><path d="M27 68 Q70 55 113 68 Q101 77 70 74 Q39 77 27 68Z"/>
+  </g>
+  <circle cx="58" cy="138" r="2" fill="#5a3f22"/><circle cx="58" cy="146" r="2" fill="#5a3f22"/>
+  <g transform="rotate(-28 114 112)">
+    <rect x="110" y="118" width="8" height="34" rx="4" fill="#6b4425" stroke="#3d2716" stroke-width="1"/>
+    <circle cx="114" cy="101" r="17" fill="url(#glass)" stroke="#c99a3a" stroke-width="5"/>
+    <circle cx="114" cy="101" r="19.6" fill="none" stroke="#8a6620" stroke-width="1"/>
+    <path d="M104 95 Q108 89 115 88" stroke="#fff" stroke-width="2.6" fill="none" stroke-linecap="round" opacity=".9"/>
+  </g>
+  <circle cx="119" cy="137" r="7" fill="#f6d6b9" stroke="#4a3426" stroke-width="1.2"/>
+  </svg>`;
+}
+function guideHTML(text,mood){return `<div class="guide"><div>${detSVG(mood)}</div><p class="bubble" id="bubble" aria-live="polite">${text}</p></div>`}
+function placeGuide(){const g=$("#panel .guide");if(!g)return;const host=$(".scene-col .scene")||$(".board");if(!host)return;
+  const old=host.querySelector(".guide");if(old)old.remove();if(host.classList.contains("board"))host.prepend(g);else host.appendChild(g)}
+function say(text,mood="happy",isHint=false){const b=$("#bubble");if(!b)return;
+  b.className="bubble"+(isHint?" hinting":"");b.innerHTML=(isHint?'<span class="lbl">다시 살펴볼 단서</span>':"")+text;
+  const d=b.parentElement.querySelector(".det");if(d)d.outerHTML=detSVG(isHint?"think":mood)}
+function toast(t){const el=$("#toast");el.textContent=t;el.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>el.hidden=true,2200)}
+
+/* ---------- 수채화 붓 ---------- */
+const PAPER="#fbf8f0";
+function gauss(R){let u=0,v=0;while(!u)u=R();while(!v)v=R();return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185*v)}
+function deform(pts,depth,v,R){
+  for(let d=0;d<depth;d++){const o=[];for(let i=0;i<pts.length;i++){const a=pts[i],b=pts[(i+1)%pts.length],len=Math.hypot(b[0]-a[0],b[1]-a[1]),vv=(a[2]+b[2])/2;
+    o.push(a,[(a[0]+b[0])/2+gauss(R)*len*vv*v,(a[1]+b[1])/2+gauss(R)*len*vv*v,vv*(.6+R()*.8)])}pts=o}
+  return pts}
+function rectPts(x0,y0,x1,y1,st=40,w=.3){const p=[];for(let x=x0;x<x1;x+=st)p.push([x,y0,w]);for(let y=y0;y<y1;y+=st)p.push([x1,y,w]);for(let x=x1;x>x0;x-=st)p.push([x,y1,w]);for(let y=y1;y>y0;y-=st)p.push([x0,y,w]);return p}
+function poly(x,p){x.beginPath();x.moveTo(p[0][0],p[0][1]);for(let i=1;i<p.length;i++)x.lineTo(p[i][0],p[i][1]);x.closePath()}
+function blobPts(cx,cy,rx,ry,n,R,rot=0){const p=[];for(let k=0;k<n;k++){const a=k/n*6.2832,j=.85+R()*.3,x=Math.cos(a)*rx*j,y=Math.sin(a)*ry*j;
+  p.push([cx+x*Math.cos(rot)-y*Math.sin(rot),cy+x*Math.sin(rot)+y*Math.cos(rot),1])}return p}
+let _grain;function grainCanvas(){if(_grain)return _grain;const c=document.createElement("canvas");c.width=c.height=256;const x=c.getContext("2d"),d=x.createImageData(256,256),R=rng(77);
+  for(let i=0;i<d.data.length;i+=4){d.data[i]=d.data[i+1]=d.data[i+2]=255;d.data[i+3]=Math.pow(R(),3)*255}x.putImageData(d,0,0);return _grain=c}
+let _fiber;function fiberCanvas(){if(_fiber)return _fiber;const c=document.createElement("canvas");c.width=c.height=200;const x=c.getContext("2d"),R=rng(31);
+  const d=x.createImageData(200,200);for(let i=0;i<d.data.length;i+=4){const v=234+R()*21;d.data[i]=v;d.data[i+1]=v;d.data[i+2]=v-3;d.data[i+3]=255}x.putImageData(d,0,0);
+  x.globalAlpha=.3;x.strokeStyle="#c9c2b4";x.lineWidth=.5;for(let k=0;k<70;k++){const a=R()*200,b=R()*200;x.beginPath();x.moveTo(a,b);x.quadraticCurveTo(a+R()*20-10,b+R()*20-10,a+R()*30-15,b+R()*30-15);x.stroke()}
+  return _fiber=c}
+function painter(w,h,s){const c=document.createElement("canvas");c.width=Math.round(w*s);c.height=Math.round(h*s);const t=document.createElement("canvas");t.width=c.width;t.height=c.height;
+  const P={c,t,ctx:c.getContext("2d"),tx:t.getContext("2d"),w,h,s};P.ctx.setTransform(s,0,0,s,0,0);P.grain=P.tx.createPattern(grainCanvas(),"repeat");return P}
+/* 물감 번짐: 조금씩 다르게 일그러진 반투명 막을 여러 겹 칠한 뒤 종이에 곱하기로 얹음 */
+function wash(P,base,color,o={}){
+  const {t,tx,ctx,s}=P,R=o.R||rng(1);
+  tx.setTransform(1,0,0,1,0,0);tx.globalCompositeOperation="source-over";tx.globalAlpha=1;tx.clearRect(0,0,t.width,t.height);tx.setTransform(s,0,0,s,0,0);
+  const v=o.v??.3,b=deform(base.map(p=>[p[0],p[1],p[2]??1]),o.pre??2,v,R),n=o.n??24;
+  tx.fillStyle=color;
+  for(let k=0;k<n;k++){tx.globalAlpha=o.a??.05;poly(tx,deform(b,o.depth??3,v,R));tx.fill();
+    if(o.gran!==0&&k%6===5){tx.globalCompositeOperation="destination-out";tx.globalAlpha=o.gran??.12;tx.save();tx.translate(-R()*256,-R()*256);
+      tx.fillStyle=P.grain;tx.fillRect(0,0,P.w+256,P.h+256);tx.restore();tx.globalCompositeOperation="source-over";tx.fillStyle=color}}
+  if(o.lifts){tx.globalCompositeOperation="destination-out";const [x0,y0,x1,y1]=o.lifts.box;
+    for(let k=0;k<o.lifts.n;k++){tx.globalAlpha=o.lifts.a??.2;const cx=x0+R()*(x1-x0),cy=y0+R()*(y1-y0);
+      poly(tx,deform(blobPts(cx,cy,o.lifts.rx*(.5+R()),o.lifts.ry*(.5+R()),18,R),2,.12,R));tx.fill()}
+    tx.globalCompositeOperation="source-over"}
+  if(o.edge!==0){tx.globalAlpha=o.edge??.22;tx.strokeStyle=o.edgeColor||shade(color,-.4);tx.lineWidth=o.edgeW??1;poly(tx,deform(b,2,v*.5,R));tx.stroke()}
+  if(o.mask){tx.globalCompositeOperation="destination-in";tx.globalAlpha=1;tx.fillStyle="#000";o.mask(tx);tx.globalCompositeOperation="source-over"}
+  ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.globalCompositeOperation=o.comp||"multiply";ctx.globalAlpha=o.alpha??1;ctx.drawImage(t,0,0);ctx.restore();
+}
+/* 펜 선: 굵기가 조금씩 흔들리는 잉크 선 */
+function ink(x,pts,o={}){const R=o.R||rng(3);x.save();x.globalCompositeOperation=o.comp||"multiply";x.strokeStyle=o.color||"#3d2f26";x.lineCap="round";x.lineJoin="round";
+  for(let pass=0;pass<(o.passes??2);pass++){x.globalAlpha=(o.a??.7)*(pass?.45:1);
+    for(let i=1;i<pts.length;i++){if(o.gap&&R()<o.gap)continue;x.lineWidth=(o.w||1)*(.55+R()*.8);x.beginPath();
+      x.moveTo(pts[i-1][0]+gauss(R)*.25,pts[i-1][1]+gauss(R)*.25);x.lineTo(pts[i][0]+gauss(R)*.25,pts[i][1]+gauss(R)*.25);x.stroke()}}
+  x.restore()}
+function brush(x,x0,y0,x1,y1,w,color,a){const mx=(x0+x1)/2+(y1-y0)*.12,my=(y0+y1)/2,nx=-(y1-y0),ny=x1-x0,l=Math.hypot(nx,ny)||1,ox=nx/l*w/2,oy=ny/l*w/2;
+  x.save();x.globalCompositeOperation="multiply";x.globalAlpha=a;x.fillStyle=color;x.beginPath();x.moveTo(x0-ox,y0-oy);
+  x.quadraticCurveTo(mx-ox*.6,my-oy*.6,x1,y1);x.quadraticCurveTo(mx+ox*.6,my+oy*.6,x0+ox,y0+oy);x.closePath();x.fill();x.restore()}
+function line(x0,y0,x1,y1,step,jit,R){const n=Math.max(2,Math.ceil(Math.hypot(x1-x0,y1-y0)/step)),p=[];for(let k=0;k<=n;k++)p.push([x0+(x1-x0)*k/n+gauss(R)*jit,y0+(y1-y0)*k/n+gauss(R)*jit]);return p}
+function paperTexture(P,strength=1){const {ctx,w,h}=P,R=rng(21),sc=document.createElement("canvas");sc.width=Math.ceil(w/9);sc.height=Math.ceil(h/9);const sx=sc.getContext("2d");
+  for(let y=0;y<sc.height;y++)for(let x=0;x<sc.width;x++){const v=228+R()*27;sx.fillStyle=`rgb(${v|0},${(v-2)|0},${(v-7)|0})`;sx.fillRect(x,y,1,1)}
+  ctx.save();ctx.globalCompositeOperation="multiply";ctx.globalAlpha=.42*strength;ctx.imageSmoothingQuality="high";ctx.drawImage(sc,0,0,w,h);
+  ctx.globalAlpha=.55*strength;ctx.fillStyle=ctx.createPattern(fiberCanvas(),"repeat");ctx.fillRect(0,0,w,h);ctx.restore()}
+
+/* ---------- 절벽 그림 ---------- */
+function layerPath(i){
+  const yb=botY(i), yt=topY(i), pts=[];
+  for(let x=X0;x<=rightX(yb);x+=10)pts.push([x,i===0?yb:wav(yb,x,i-1)]);
+  for(let y=yb;y>=yt;y-=6)pts.push([rightX(y),y]);
+  for(let x=Math.floor(rightX(yt)/10)*10;x>=X0;x-=10)pts.push([x,wav(yt,x,i)]);
+  return "M"+pts.map(p=>p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" L")+" Z";
+}
+function stratumPts(i,step,pad=0){const yb=botY(i),yt=topY(i),p=[];
+  for(let x=X0;x<rightX(yb);x+=step)p.push([x,i===0?yb:wav(yb,x,i-1)+pad,1]);
+  for(let y=yb;y>yt;y-=step/3)p.push([rightX(y),y,.5]);
+  for(let x=rightX(yt);x>X0;x-=step)p.push([x,wav(yt,x,i)-pad,1]);
+  for(let y=yt;y<yb;y+=step/3)p.push([X0,y,.3]);return p}
+function cliffSil(){const p=[];for(let x=X0;x<=rightX(90);x+=10)p.push([x,wav(90,x,4)-1]);for(let y=90;y<=BASE;y+=6)p.push([rightX(y)+1.5,y]);p.push([X0,BASE+3]);return p}
+function paintShell(x,cx,cy,s,R){const h=[cx,cy+8*s],pts=[h];for(let k=0;k<=12;k++){const a=(200+k*140/12)*Math.PI/180;pts.push([cx+Math.cos(a)*12*s,cy+1*s+Math.sin(a)*12*s])}
+  x.save();x.globalAlpha=.25;x.fillStyle="#2b2b2b";x.globalCompositeOperation="multiply";poly(x,pts.map(p=>[p[0]+1.2,p[1]+1.4]));x.fill();
+  x.globalCompositeOperation="source-over";x.globalAlpha=.92;x.fillStyle="#efe7d4";poly(x,pts);x.fill();x.restore();
+  for(let k=1;k<pts.length;k+=2)ink(x,[h,[h[0]+(pts[k][0]-h[0])*.95,h[1]+(pts[k][1]-h[1])*.95]],{R,w:.45*s,a:.55,passes:1});
+  ink(x,[...pts,pts[0]],{R,w:.6*s,a:.7,passes:1})}
+function paintLeaf(x,cx,cy,s,rot,R){const pts=[];for(let k=0;k<=16;k++){const t=-1+k/8;if(t>1)break;pts.push([t*14*s,-9*s*(1-t*t)*(1+.15*t)])}
+  for(let k=15;k>=1;k--){const t=-1+k/8;pts.push([t*14*s,9*s*(1-t*t)*(1+.15*t)])}
+  const tr=p=>[cx+p[0]*Math.cos(rot)-p[1]*Math.sin(rot),cy+p[0]*Math.sin(rot)+p[1]*Math.cos(rot),1];
+  const P2=pts.map(tr);x.save();x.globalCompositeOperation="multiply";x.globalAlpha=.75;x.fillStyle="#7c8656";poly(x,P2);x.fill();x.restore();
+  ink(x,[tr([-17*s,0]),tr([14*s,0])],{R,w:.6*s,a:.75,passes:1});
+  for(let k=-3;k<=3;k++){if(!k)continue;const t=k/4;ink(x,[tr([t*12*s-2*s,0]),tr([t*12*s+2*s,-7*s*(1-t*t)])],{R,w:.35*s,a:.6,passes:1});ink(x,[tr([t*12*s-2*s,0]),tr([t*12*s+2*s,7*s*(1-t*t)])],{R,w:.35*s,a:.6,passes:1})}
+  ink(x,[...P2,P2[0]],{R,w:.5*s,a:.6,passes:1})}
+let SCENE_URL=null;
+function paintScene(){
+  if(SCENE_URL)return SCENE_URL;
+  const P=painter(800,560,2),x=P.ctx,R=rng(2024),HZ=124,sil=cliffSil();
+  const clipSil=t=>{poly(t,sil);t.fill()};
+  x.fillStyle=PAPER;x.fillRect(0,0,800,560);
+  // 하늘: 젖은 종이에 번진 파랑, 구름은 물감을 닦아 낸 자리
+  wash(P,[[-40,-40],[400,-50],[840,-40],[850,150],[400,160],[-50,150]],"#86b6d3",{R,n:30,a:.05,v:.22,pre:3,edge:0,gran:.1,
+    lifts:{n:9,box:[40,12,780,74],rx:66,ry:11,a:.5},
+    mask:t=>{const g=t.createLinearGradient(0,0,0,HZ);g.addColorStop(0,"#000");g.addColorStop(1,"rgba(0,0,0,.2)");t.fillStyle=g;t.fillRect(0,0,800,HZ+20)}});
+  wash(P,[[-40,70],[840,60],[840,HZ+6],[-40,HZ+6]],"#f0cfa4",{R,n:14,a:.045,v:.3,edge:0});
+  // 바다
+  wash(P,[[-40,HZ],[840,HZ],[840,560],[-40,560]].map(p=>[p[0],p[1],.12]),"#5f9caa",{R,n:28,a:.055,v:.12,edge:0,gran:.16,
+    mask:t=>{const g=t.createLinearGradient(0,HZ,0,520);g.addColorStop(0,"rgba(0,0,0,.55)");g.addColorStop(1,"#000");t.fillStyle=g;t.fillRect(0,HZ,800,440)}});
+  ink(x,line(0,HZ,800,HZ,14,.25,R),{R,w:.9,a:.5,color:"#2f5966",gap:.08});
+  for(let k=0;k<90;k++){const y=HZ+6+R()*390,xx=R()*800,l=5+R()*16*(.4+y/400);ink(x,[[xx,y],[xx+l/2,y-1.1],[xx+l,y]],{R,w:.6+y/700,a:.4,color:"#2c5562",passes:1})}
+  for(let k=0;k<3;k++){const gx=200+k*190+R()*60,gy=26+R()*30,s=4+R()*3;ink(x,[[gx-s,gy-s*.4],[gx-s*.4,gy-s*.6],[gx,gy],[gx+s*.4,gy-s*.6],[gx+s,gy-s*.4]],{R,w:.9,a:.75,passes:1})}
+  // 절벽 자리를 종이로 비우고 지층을 칠함
+  x.fillStyle=PAPER;poly(x,sil);x.fill();
+  LAYERS.forEach((L,i)=>{
+    const b=stratumPts(i,40,3),yt=topY(i),yb=botY(i),th=yb-yt,mask=t=>{poly(t,stratumPts(i,10));t.fill()};
+    wash(P,b,L.hex,{R,n:32,a:.08,v:.1,pre:2,gran:.12,edge:.3,lifts:{n:5,box:[X0,yt,720,yb],rx:60,ry:th*.25,a:.13}});
+    for(let k=0;k<4;k++){const cx=X0+40+R()*600,cy=yt+R()*th;
+      wash(P,blobPts(cx,cy,40+R()*80,th*(.15+R()*.15),16,R),shade(L.hex,-.12),{R,n:8,a:.04,v:.15,edge:0,gran:.2,mask})}
+  });
+  // 지층별 알갱이와 무늬
+  LAYERS.forEach((L,i)=>{
+    const yt=topY(i),yb=botY(i),Rl=rng(300+i);
+    if(L.grain==="gravel"){
+      for(let k=0;k<130;k++){const cx=X0+8+Rl()*640,cy=yt+6+Rl()*(yb-yt-10);if(cx>rightX(cy)-8)continue;
+        const rx=3+Rl()*6.5,ry=rx*(.55+Rl()*.35),rot=Rl()*.8-.4,c=shade(["#8f8273","#7b766f","#a39079","#6d6660","#b9ab95"][k%5],Rl()*.2-.1);
+        const bp=deform(blobPts(cx,cy,rx,ry,8,Rl,rot),1,.15,Rl);
+        x.save();x.globalCompositeOperation="multiply";x.globalAlpha=.18;x.fillStyle="#3d2f26";poly(x,bp.map(p=>[p[0]+.8,p[1]+1.4]));x.fill();
+        x.globalAlpha=.55;x.fillStyle=c;poly(x,bp);x.fill();x.globalCompositeOperation="source-over";x.globalAlpha=.28;x.fillStyle="#fff";
+        x.beginPath();x.ellipse(cx-rx*.3,cy-ry*.35,rx*.35,ry*.22,rot,0,7);x.fill();x.restore();
+        ink(x,[...bp,bp[0]],{R:Rl,w:.55,a:.45,passes:1,gap:.3})}
+    }else if(L.grain==="sand"){
+      x.save();x.globalCompositeOperation="multiply";
+      for(let k=0;k<1700;k++){const px=X0+Rl()*650,py=yt+2+Rl()*(yb-yt-4);if(px>rightX(py))continue;x.globalAlpha=.3;x.fillStyle=shade(L.hex,-.45);x.fillRect(px,py,.5+Rl()*.8,.5+Rl()*.8)}
+      x.restore();
+      if(i===1)for(let s=0;s<5;s++){const sx=X0+40+s*125+Rl()*30,sy=yt+12+Rl()*(yb-yt-40);for(let k=0;k<6;k++)ink(x,line(sx+k*7,sy,sx+k*7+30,sy+22,6,.3,Rl),{R:Rl,w:.5,a:.22,passes:1,gap:.2})}
+    }else{
+      for(let y=yt+3;y<yb-2;y+=3.5+Rl()*2)ink(x,line(X0,wav(y,X0,i),rightX(y)-2,y+gauss(Rl),18,.4,Rl),{R:Rl,w:.45,a:.16,color:shade(L.hex,-.5),passes:1,gap:.4});
+    }
+    if(L.ripple)for(let r=0;r<2;r++){const p=[];for(let px=140;px<=430;px+=3)p.push([px,yb-12-r*10+3*Math.sin(px/8+r)]);ink(x,p,{R:Rl,w:.9,a:.55,color:"#5d4a28",passes:1,gap:.05})}
+  });
+  // 지층 경계 펜선
+  for(let i=0;i<LAYERS.length;i++){const p=[];for(let px=X0;px<=rightX(topY(i));px+=8)p.push([px,wav(topY(i),px,i)]);ink(x,p,{R,w:1,a:.5,gap:.12})}
+  // 화석(절벽 속 작게)
+  paintShell(x,470,(botY(2)+topY(2))/2,1,R);paintShell(x,500,(botY(2)+topY(2))/2+6,.6,R);paintLeaf(x,300,(botY(4)+topY(4))/2,1,-.3,R);
+  // 절벽 오른쪽 옆면의 그늘과 빗금
+  const side=[];for(let y=88;y<=BASE;y+=8)side.push([rightX(y)-22-6*Math.sin(y/47),y,.3]);for(let y=BASE;y>=88;y-=8)side.push([rightX(y)+2,y,.2]);
+  wash(P,side,"#5b4e46",{R,n:14,a:.045,v:.15,edge:0,mask:clipSil});
+  for(let k=0;k<70;k++){const y=96+R()*408,x0=rightX(y)-3-R()*20;ink(x,[[x0,y],[x0+5,y-6]],{R,w:.6,a:.3,passes:1})}
+  // 빗물 자국과 절리
+  for(let k=0;k<6;k++){const cx=X0+30+R()*600,len=60+R()*160;const st=[];for(let y=96;y<=96+len;y+=10)st.push([cx+3-y/len*.6,y,.15]);for(let y=96+len;y>=96;y-=10)st.push([cx-3+y/len*.6,y,.15]);wash(P,st,"#4d4038",{R,n:8,a:.018,v:.3,edge:0,mask:clipSil})}
+  for(let k=0;k<5;k++){const jx=X0+60+R()*560,y0=topY(1)+R()*60,y1=y0+80+R()*120;const p=line(jx,y0,jx+gauss(R)*8,Math.min(y1,BASE-2),6,1,R);ink(x,p,{R,w:.8,a:.45,passes:1,gap:.15})}
+  // 위쪽 그늘과 풀
+  wash(P,[[X0,90],[rightX(90),90],[rightX(98),98],[X0,98]].map(p=>[p[0],p[1],.1]),"#4a3c30",{R,n:8,a:.025,edge:0,mask:clipSil});
+  const grass=[];for(let px=X0-10;px<=rightX(90)+12;px+=16)grass.push([px,84+R()*3,.6]);for(let px=rightX(90)+12;px>=X0-10;px-=16)grass.push([px,97+R()*2,.3]);
+  wash(P,grass,"#8db36a",{R,n:20,a:.07,v:.25,edge:.25});
+  wash(P,grass.map(p=>[p[0],p[1]+3,p[2]]),"#6e9a4e",{R,n:10,a:.05,v:.3,edge:0,lifts:{n:6,box:[X0,84,720,94],rx:40,ry:4,a:.3}});
+  for(let k=0;k<140;k++){const gx=X0-6+R()*650,gy=92+R()*4;brush(x,gx,gy,gx+gauss(R)*4,gy-6-R()*11,1.6,R()<.5?"#4f7a3a":"#6b9a49",.6)}
+  for(let k=0;k<14;k++){const fx=X0+R()*640,fy=83+R()*6;x.save();x.globalAlpha=.85;x.fillStyle=R()<.5?"#f1d35a":"#fbf6ea";x.beginPath();x.arc(fx,fy,1.4,0,7);x.fill();x.restore()}
+  // 아래 자갈 해변
+  const beach=[];for(let bx=30;bx<=810;bx+=20)beach.push([bx,BASE+8+5*Math.sin(bx/90)+(bx<60||bx>780?6:0),.25]);for(let bx=810;bx>=30;bx-=40)beach.push([bx,566,.1]);
+  x.fillStyle=PAPER;poly(x,deform(beach,2,.1,R));x.fill();
+  wash(P,beach,"#d8c6a0",{R,n:18,a:.07,v:.1,edge:.2});
+  wash(P,rectPts(X0-6,BASE-2,rightX(BASE)+8,BASE+12,20,.15),"#4a3c30",{R,n:12,a:.05,v:.3,edge:0});
+  for(let k=0;k<70;k++){const bx=40+R()*750,by=BASE+14+R()*40,r=2+R()*6*(by-BASE)/50;const bp=blobPts(bx,by,r,r*.6,7,R);
+    x.save();x.globalCompositeOperation="multiply";x.globalAlpha=.5;x.fillStyle=shade("#8f8273",R()*.4-.2);poly(x,bp);x.fill();x.restore();ink(x,[...bp,bp[0]],{R,w:.5,a:.4,passes:1,gap:.4})}
+  paperTexture(P,1);
+  {const d=P.ctx.getImageData(0,0,P.c.width,P.c.height).data,W=P.c.width;
+   LAYERS.forEach((L,i)=>{const yt=topY(i),th=botY(i)-yt;let r=0,g=0,bl=0,n=0;
+     for(let y=yt+th*.3;y<=yt+th*.7;y+=3)for(let xx=120;xx<650;xx+=5){const o=(Math.round(y*2)*W+xx*2)*4;r+=d[o];g+=d[o+1];bl+=d[o+2];n++}
+     L.paint=`rgb(${Math.round(r/n)},${Math.round(g/n)},${Math.round(bl/n)})`})}
+  const vg=x.createRadialGradient(400,280,260,400,280,520);vg.addColorStop(0,"rgba(255,255,255,0)");vg.addColorStop(1,"rgba(196,176,140,.25)");
+  x.save();x.globalCompositeOperation="multiply";x.fillStyle=vg;x.fillRect(0,0,800,560);x.restore();
+  return SCENE_URL=P.c.toDataURL("image/jpeg",.9);
+}
+function cliffSVG(mode){
+  let g=`<image href="${paintScene()}" x="0" y="0" width="800" height="560" preserveAspectRatio="none"/>`;
+  LAYERS.forEach((L,i)=>{
+    const d=layerPath(i),ty=(botY(i)+topY(i))/2,tx=772,rot=(i%2?3:-3);
+    g+=`<g class="layer" data-i="${i}" tabindex="0" role="button" aria-label="${L.L} 지층 살펴보기">
+      <path d="${d}" fill="transparent"/><path d="${d}" class="hl"/>
+      <path d="M${(rightX(ty)+4).toFixed(0)} ${ty} L${tx-17} ${ty}" stroke="#4a3426" stroke-width="1" stroke-dasharray="2 3" opacity=".7"/>
+      <g transform="rotate(${rot} ${tx} ${ty})"><rect x="${tx-15}" y="${ty-15}" width="30" height="30" rx="4" fill="#fbf8f0" stroke="#4a3426" stroke-width="1.4" filter="url(#wc-soft)"/>
+      <text x="${tx}" y="${ty+6.5}" text-anchor="middle" font-size="18" fill="#3d2f26" font-family="Jua, sans-serif">${L.L}</text></g>
+      <g class="chk"><circle cx="${tx+14}" cy="${ty-14}" r="8" fill="#3d8150" stroke="#fbf8f0" stroke-width="1.5"/><path d="M${tx+10} ${ty-14} l3 3 l5 -6" stroke="#fff" stroke-width="2" fill="none"/></g>
+    </g>`;
+  });
+  // 측량 막대(0.5 m마다 빨강·흰색)
+  let ru=`<g filter="url(#wc-soft)">`;
+  for(let k=0;k<14;k++)ru+=`<rect x="52" y="${BASE-(k+1)*SC/2}" width="11" height="${SC/2}" fill="${k%2?"#f7f1e3":"#c4432f"}"/>`;
+  ru+=`<rect x="52" y="${BASE-7*SC}" width="11" height="${7*SC}" fill="none" stroke="#4a3426" stroke-width="1.3"/><path d="M52 ${BASE} L57.5 ${BASE+9} L63 ${BASE}Z" fill="#4a3426"/></g>`;
+  for(let m=0;m<=7;m++){const y=BASE-m*SC;ru+=`<line x1="44" y1="${y}" x2="52" y2="${y}" stroke="#3d2f26" stroke-width="1.4"/>
+    <text x="42" y="${y+4.5}" text-anchor="end" font-size="14" fill="#3d2f26" font-family="Jua, sans-serif">${m}</text>`}
+  ru+=`<text x="57.5" y="${BASE-7*SC-8}" text-anchor="middle" font-size="13" fill="#3d2f26" font-family="Jua, sans-serif">m</text>`;
+  g+=ru;
+  if(mode==="fossil"){
+    const yS=(botY(2)+topY(2))/2, yL=(botY(4)+topY(4))/2;
+    g+=`<g class="hot ${S.s4.f.shell.step>=3?"done":""}" data-f="shell" tabindex="0" role="button" aria-label="가 지층의 화석 조사하기"><circle class="ring" cx="482" cy="${yS+2}" r="30"/><circle cx="482" cy="${yS+2}" r="30" fill="transparent"/></g>
+        <g class="hot ${S.s4.f.leaf.step>=3?"done":""}" data-f="leaf" tabindex="0" role="button" aria-label="다 지층의 화석 조사하기"><circle class="ring" cx="300" cy="${yL}" r="28"/><circle cx="300" cy="${yL}" r="28" fill="transparent"/></g>`;
+  }
+  return `<svg viewBox="0 0 800 560" id="cliff" role="img" aria-label="바닷가 절벽에 드러난 여러 지층">${g}</svg>`;
+}
+
+/* ---------- 확대 질감 ---------- */
+const texCache={};
+function makeTex(i){
+  if(texCache[i])return texCache[i];
+  const W=480,H=300,P=painter(W,H,1),x=P.ctx,L=LAYERS[i],R=rng(50+i);
+  x.fillStyle=PAPER;x.fillRect(0,0,W,H);
+  wash(P,rectPts(-30,-30,510,330),L.hex,{R,n:24,a:.085,v:.15,edge:0,gran:.2,lifts:{n:8,box:[0,0,W,H],rx:70,ry:40,a:.14}});
+  if(L.grain==="gravel"){
+    x.save();x.globalCompositeOperation="multiply";for(let k=0;k<2600;k++){x.globalAlpha=.35;x.fillStyle=shade("#9a8c78",R()*.5-.3);x.fillRect(R()*W,R()*H,1+R()*1.6,1+R()*1.6)}x.restore();
+    for(let k=0;k<26;k++){const px=R()*W,py=R()*H,rx=15+R()*19,ry=rx*(.62+R()*.3),rot=R()*3,c=shade(["#8f8273","#7d7a76","#a39079","#6d6660","#b2a48f"][k%5],R()*.2-.1);
+      const bp=blobPts(px,py,rx,ry,10,R,rot);
+      x.save();x.globalCompositeOperation="multiply";x.globalAlpha=.25;x.fillStyle="#2e241c";poly(x,bp.map(p=>[p[0]+3,p[1]+4]));x.fill();x.restore();
+      wash(P,bp,c,{R,n:9,a:.14,v:.12,pre:1,depth:2,edge:.5,gran:.25});
+      x.save();x.globalAlpha=.3;x.fillStyle="#fff";x.beginPath();x.ellipse(px-rx*.3,py-ry*.35,rx*.32,ry*.2,rot,0,7);x.fill();x.restore();
+      ink(x,[...bp,bp[0]],{R,w:1,a:.35,passes:1,gap:.4})}
+  }else if(L.grain==="sand"){
+    for(let k=0;k<2600;k++){const px=R()*W,py=R()*H,r=1.8+R()*2.6,bp=blobPts(px,py,r,r*(.6+R()*.4),6,R,R()*3);
+      x.save();if(R()<.1){x.globalAlpha=.85;x.fillStyle="#f4efe3"}else{x.globalCompositeOperation="multiply";x.globalAlpha=.6;x.fillStyle=shade(L.hex,R()*.5-.3)}poly(x,bp);x.fill();
+      if(R()<.4){x.globalAlpha=.3;x.strokeStyle="#3d2f26";x.lineWidth=.5;x.stroke()}x.restore()}
+  }else{
+    for(let k=0;k<20;k++){const y0=k*15+R()*6;ink(x,line(-5,y0,W+5,y0+gauss(R)*2,16,.6,R),{R,w:.6+R()*1.2,a:.18,color:shade(L.hex,-.55),passes:1,gap:.3})}
+    x.save();x.globalCompositeOperation="multiply";for(let k=0;k<3500;k++){x.globalAlpha=.2;x.fillStyle="#2e2a26";x.fillRect(R()*W,R()*H,.8,.8)}x.restore();
+  }
+  if(L.ripple)for(let r=0;r<3;r++){const p=[];for(let px=0;px<=W;px+=5)p.push([px,200+r*28+10*Math.sin(px/26)]);ink(x,p,{R,w:2.2,a:.5,color:"#5a4524",passes:1})}
+  paperTexture(P,.6);
+  return texCache[i]=P.c;
+}
+function drawZoom(i){
+  const cv=$("#zoom");if(!cv)return;const x=cv.getContext("2d");x.drawImage(makeTex(i),0,0);
+  // 기준: 콩알 약 5 mm (지름 20px), 1 cm 막대(40px)
+  x.fillStyle="rgba(255,253,245,.92)";x.beginPath();x.roundRect(318,108,152,56,10);x.fill();
+  x.fillStyle="#7fae4f";x.beginPath();x.arc(340,128,10,0,7);x.fill();x.strokeStyle="#4b7a2c";x.lineWidth=1.5;x.stroke();
+  x.fillStyle="#25374a";x.font="14px 'Gowun Dodum', sans-serif";x.fillText("콩알 약 5 mm",356,133);
+  x.fillRect(332,151,40,4);x.fillText("1 cm",380,157);
+}
+
+/* ---------- 돋보기 ---------- */
+function bindLens(kind){
+  const scene=$("#scene"),lens=$("#lens");if(!scene||!lens)return;
+  const tag=document.createElement("div");tag.className="lens-tag";tag.hidden=true;tag.textContent="돋보기";scene.appendChild(tag);
+  const lx=lens.getContext("2d");let hideT;
+  function show(ev){
+    if(!S.tool){lens.hidden=true;tag.hidden=true;return}
+    const rect=scene.getBoundingClientRect(),cx=ev.clientX-rect.left,cy=ev.clientY-rect.top;
+    lx.clearRect(0,0,300,300);lx.save();lx.beginPath();lx.arc(150,150,150,0,7);lx.clip();
+    let ok=false;
+    if(kind==="cliff"){
+      const svg=$("#cliff"),pt=svg.createSVGPoint();pt.x=ev.clientX;pt.y=ev.clientY;const p=pt.matrixTransform(svg.getScreenCTM().inverse());
+      if(p.x>X0&&p.x<rightX(p.y)&&p.y>90&&p.y<BASE){const i=LAYERS.findIndex((_,k)=>p.y<=botY(k)&&p.y>=topY(k));
+        if(i>=0){const t=makeTex(i),sx=(p.x*2.3)%(480-160),sy=(p.y*3.1)%(300-160);lx.drawImage(t,sx,sy,160,160,0,0,300,300);ok=true;tag.textContent=LAYERS[i].L+" 지층 확대"}}
+    }else{
+      const cv=$("#tank"),r2=cv.getBoundingClientRect(),k=cv.width/r2.width,px=(ev.clientX-r2.left)*k,py=(ev.clientY-r2.top)*k,s=50*k*cv.clientWidth/800;
+      lx.fillStyle="#fff";lx.fillRect(0,0,300,300);lx.drawImage(cv,px-s/2,py-s/2,s,s,0,0,300,300);ok=true;tag.textContent="3배 확대"}
+    lx.restore();
+    lens.hidden=!ok;tag.hidden=!ok;
+    const lxp=Math.min(Math.max(cx-75,4),rect.width-154),lyp=Math.max(cy-175,4);
+    lens.style.left=lxp+"px";lens.style.top=lyp+"px";tag.style.left=(lxp+40)+"px";tag.style.top=(lyp+150)+"px";
+    clearTimeout(hideT);if(ev.pointerType==="touch")hideT=setTimeout(()=>{lens.hidden=true;tag.hidden=true},1800);
+  }
+  scene.addEventListener("pointermove",show);scene.addEventListener("pointerdown",show);
+  scene.addEventListener("pointerleave",e=>{if(e.pointerType!=="touch"){lens.hidden=true;tag.hidden=true}});
+}
+function toolBtn(){return `<button class="btn tool" id="toolBtn" type="button" aria-pressed="${S.tool}">
+  <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6.5" fill="#d6eef4" stroke="#c99a3a" stroke-width="2.6"/><path d="M15 15 L21 21" stroke="#6b4425" stroke-width="3.2" stroke-linecap="round"/></svg>
+  돋보기 ${S.tool?"끄기":"켜기"}</button>`}
+function bindTool(){const b=$("#toolBtn");if(b)b.onclick=()=>{S.tool=!S.tool;b.setAttribute("aria-pressed",S.tool);b.lastChild.textContent=` 돋보기 ${S.tool?"끄기":"켜기"}`;
+  if(S.tool)toast("장면 위를 움직이거나 눌러 확대해요");else{const l=$("#lens");if(l)l.hidden=true;$$(".lens-tag").forEach(t=>t.hidden=true)}}}
+
+/* ---------- 상단 단계 ---------- */
+const STEPS=["절벽 조사","지층 만들기","시간의 순서","화석 조사","탐정 보고서"];
+function renderSteps(){
+  $("#steps").innerHTML=STEPS.map((n,k)=>{const s=k+1;return `<button class="step ${S.done[s]?"done":""}" type="button" data-s="${s}" ${s>S.unlocked?"disabled":""} ${S.stage===s?'aria-current="step"':""}>
+    <span class="n">${S.done[s]?"✓":s}</span><span class="lbl">${n}</span></button>`}).join("");
+  $$(".step").forEach(b=>b.onclick=()=>go(+b.dataset.s));
+}
+function updateNbCount(){$("#nbCnt").textContent=S.notes.length}
+function go(s){S.stage=s;S.tool=false;stopSim();$("#topbar").hidden=s===0;$("#app").className=s===6?"scroll":"";
+  if(s>0&&s<6)renderSteps();
+  ({0:renderIntro,1:renderS1,2:renderS2,3:renderS3,4:renderS4,5:renderS5,6:renderResult})[s]();
+  const cap=$(".scene-cap"),sc=$(".scene-col .scene");if(cap&&sc)sc.appendChild(cap);
+  $("#app").scrollTop=0;
+}
+function complete(s){S.done[s]=true;S.unlocked=Math.max(S.unlocked,s+1);renderSteps()}
+function nextCard(s,msg){return `<div class="card" style="border:2px solid var(--ok)"><h3 style="color:var(--ok)">${msg}</h3>
+  <button class="btn primary" type="button" data-go="${s+1}">${s<5?"다음: "+STEPS[s]:"결과 보기"} →</button></div>`}
+function bindGo(){$$("[data-go]").forEach(b=>b.onclick=()=>go(+b.dataset.go))}
+
+/* ---------- 관찰 수첩 ---------- */
+function openNb(){
+  const f=S.notes.filter(n=>n.type==="fact"),r=S.notes.filter(n=>n.type==="inf");
+  const lst=(a,t)=>a.length?a.map(n=>`<div class="note ${t}">${esc(n.text)}<small>${n.stage}단계 · ${STEPS[n.stage-1]}</small></div>`).join(""):`<p class="small">아직 없어요.</p>`;
+  $("#nbBody").innerHTML=`<p class="small">파란 칸은 눈으로 본 <b>사실</b>, 주황 칸은 단서로 생각한 <b>추론</b>이에요.</p>
+   <section><h3><span class="chip fact">사실</span> 관찰한 것</h3>${lst(f,"fact")}</section>
+   <section><h3><span class="chip inf">추론</span> 단서로 생각한 것</h3>${lst(r,"inf")}</section>`;
+  $("#drawer").hidden=false;$("#scrim").hidden=false;$("#nbClose").focus();
+}
+function closeNb(){$("#drawer").hidden=true;$("#scrim").hidden=true;$("#nbBtn").focus()}
+$("#nbBtn").onclick=openNb;$("#nbClose").onclick=closeNb;$("#scrim").onclick=closeNb;
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!$("#drawer").hidden)closeNb()});
+
+/* ---------- 0. 인트로 ---------- */
+function renderIntro(){
+  $("#app").innerHTML=`<section class="intro">
+   <div class="scene-col"><div class="scene">${cliffSVG("intro")}</div></div>
+   <div class="intro-txt">
+     <div style="display:flex;align-items:flex-end;gap:12px">${detSVG("happy","det-big")}
+       <p class="bubble" style="margin-bottom:18px">안녕! 나는 지오 탐정이야.<br>절벽에 남은 단서를 같이 풀자.</p></div>
+     <h1>지층 탐정단<span>사라진 시간의 단서</span></h1>
+     <div class="story"><span>바닷가 절벽에서 줄무늬 지층과 화석이 발견됐어요.</span><span>이 땅은 옛날에 어떤 곳이었을까요?</span></div>
+     <ol><li>절벽 조사</li><li>지층 만들기</li><li>시간의 순서</li><li>화석 조사</li><li>탐정 보고서</li></ol>
+     <div><button class="btn primary" type="button" data-go="1" style="font-size:22px;padding:10px 26px">탐사 시작</button></div>
+   </div></section>`;
+  bindGo();
+}
+
+/* ---------- 1. 절벽 조사 ---------- */
+function renderS1(){
+  $("#app").innerHTML=`<section class="stage"><div class="scene-col"><div class="scene" id="scene">${cliffSVG("survey")}<canvas class="lens" id="lens" width="300" height="300" hidden></canvas></div>
+    <p class="scene-cap"><span>측량 막대: 한 칸 0.5 m</span><span>탐정 수칙: 색만 보고 나이나 환경을 정하지 않아요</span></p></div><div class="panel" id="panel"></div></section>`;
+  $$(".layer").forEach(g=>{const f=()=>{S.s1.sel=+g.dataset.i;renderP1()};g.onclick=f;g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();f()}}});
+  bindLens("cliff");renderP1();
+}
+function markLayers(){$$(".layer").forEach(g=>{const i=+g.dataset.i;g.classList.toggle("done",!!S.s1.rec[i]);g.classList.toggle("sel",S.s1.sel===i)})}
+function renderP1(){
+  const s=S.s1,n=Object.keys(s.rec).length,i=s.sel;
+  let h=guideHTML(i==null?"절벽의 지층을 하나 눌러 보세요.<br>색, 두께, 알갱이를 기록해요.":`${LAYERS[i].L} 지층을 골랐어요. 확대 화면과 측량 막대를 보세요.`);
+  if(n===5)h+=nextCard(1,"다섯 지층을 모두 기록했어요!");
+  h+=`<div class="row">${toolBtn()}<span class="small" style="flex:1;min-width:120px">기록한 지층 ${n} / 5<span class="progress" style="display:block;margin-top:3px"><i style="width:${n*20}%"></i></span></span></div>`;
+  if(i!=null){
+    const L=LAYERS[i],d=s.draft[i]||(s.draft[i]={}),ok=s.ok[i]||(s.ok[i]={}),hi=s.hint[i]||{},rec=s.rec[i];
+    const SH={color:"견본과 밝은 부분을 비교해요",thick:"측량 막대 눈금을 읽어요 (한 칸 0.5 m)",grain:"콩알과 크기를 비교해요"};
+    const grp=(key,label,opts)=>`<div class="grp"><span>${label}</span><div class="opts">${opts.map(o=>{
+      const on=d[key]===o.v,isOk=ok[key]&&on;return `<button class="opt ${isOk?"ok":""}" type="button" data-k="${key}" data-v="${o.v}" aria-pressed="${on}" ${ok[key]?"disabled":""}>${o.sw?`<span class="sw" style="background:${o.sw}"></span>`:""}${o.t}</button>`}).join("")}</div>
+      ${hi[key]?`<div class="hint s">${hi[key]==="아직 고르지 않았어요."?hi[key]:SH[key]}</div>`:""}</div>`;
+    h+=`<div class="card"><h3><span class="ltag">${L.L}</span> 지층 관찰</h3>
+      <canvas id="zoom" class="zoom" width="480" height="170" aria-label="${L.L} 지층을 확대한 모습"></canvas>
+      <p class="small" style="margin-top:-3px">약 10배 확대 · 콩알(약 5 mm)과 크기를 비교해요</p>
+      ${grp("color","색",COLOR_OPTS.map(c=>{const L=LAYERS.find(l=>l.color===c);return {v:c,t:c,sw:L.paint||COLOR_HEX[c]}}))}
+      ${grp("thick","두께",Object.entries(THICK).map(([v,o])=>({v,t:`${o.n} <span class="small">${{thin:"1 m 미만",mid:"1~2 m",thick:"2 m 넘음"}[v]}</span>`})))}
+      ${grp("grain","알갱이",Object.entries(GRAIN).map(([v,o])=>({v,t:`${o.n} <span class="small">${{gravel:"콩알보다 큼",sand:"작지만 보임",mud:"거의 안 보임"}[v]}</span>`})))}
+      ${rec?`<div class="note fact"><span class="chip fact">사실</span> ${esc(rec)}</div>`:`<button class="btn primary" id="recBtn" type="button">관찰 수첩에 기록</button>`}
+    </div>`;
+  }
+  $("#panel").innerHTML=h;placeGuide();bindTool();bindGo();markLayers();
+  if(i!=null){drawZoom(i);
+    $$("#panel .opt").forEach(b=>b.onclick=()=>{S.s1.draft[i][b.dataset.k]=b.dataset.v;delete (S.s1.hint[i]||{})[b.dataset.k];renderP1()});
+    const rb=$("#recBtn");if(rb)rb.onclick=()=>checkS1(i);}
+}
+function checkS1(i){
+  const L=LAYERS[i],d=S.s1.draft[i],ok=S.s1.ok[i],hi=S.s1.hint[i]={};
+  const H={color:"견본 색과 지층의 밝은 부분을 나란히 비교해 보세요. 그늘진 곳은 더 어둡게 보여요.",
+    thick:"왼쪽 측량 막대에서 이 지층의 아래 경계와 위 경계 눈금을 읽고 빼 보세요. 한 칸은 0.5 m예요.",
+    grain:"확대 화면의 알갱이 하나를 골라 콩알 크기와 비교해 보세요."};
+  let miss=[];
+  ["color","thick","grain"].forEach(k=>{if(!d[k]){hi[k]="아직 고르지 않았어요.";miss.push(k)}else if(d[k]===L[k==="color"?"color":k])ok[k]=true;else{hi[k]=H[k];miss.push(k)}});
+  if(miss.length){S.lookAgain++;renderP1();say(miss.map(k=>H[k]).filter(Boolean)[0]||"빈 칸을 골라요.","think",true);return}
+  const txt=`${L.L} 지층: ${L.color}, 두께 ${THICK[L.thick].n}(약 ${L.t} m), ${GRAIN[L.grain].n} 알갱이`;
+  S.s1.rec[i]=txt;addNote("fact",1,txt,"s1-"+i);
+  const n=Object.keys(S.s1.rec).length;if(n===5){complete(1);S.s1.sel=null}
+  renderP1();toast(n===5?"절벽 조사 완료!":"관찰 수첩에 기록했어요");say(n===5?"좋아! 이제 지층이 어떻게 쌓이는지 모형으로 알아보자.":"잘 기록했어요. 다른 지층도 살펴봐요.");
+}
+
+/* ---------- 2. 지층 만들기 (퇴적 모형) ---------- */
+const TK={x0:150,x1:650,bot:470,water:96,W:800,H:520,col:2};
+const TYPES={gravel:{n:40,r:[6,9.5],hex:"#8f8273",v:5,T:54,name:"자갈"},sand:{n:520,r:[1.8,2.8],hex:"#caa461",v:2.6,T:46,name:"모래"},mud:{n:1300,r:[.9,1.3],hex:"#5f666e",v:1.15,T:36,name:"진흙"}};
+let SIM=null;
+function newSim(){const nc=(TK.x1-TK.x0)/TK.col;return{h:new Array(nc).fill(TK.bot),falling:[],settled:[],layers:[],cur:null,press:0,plate:-1,raf:0,R:rng(Date.now()%1e6)}}
+function stopSim(){if(SIM&&SIM.raf)cancelAnimationFrame(SIM.raf);if(SIM)SIM.raf=0}
+function renderS2(){
+  $("#app").innerHTML=`<section class="stage tank"><div class="scene-col"><div class="scene" id="scene" style="--ar:1.5385"><canvas class="main" id="tank" aria-label="물이 담긴 수조 단면 모형"></canvas><canvas class="lens" id="lens" width="300" height="300" hidden></canvas></div>
+    <p class="scene-cap"><span>수조 옆면(단면)을 보고 있어요</span><span>실제 지층은 아주 오랜 시간 동안 쌓이고 눌려 단단해져요</span></p></div><div class="panel" id="panel"></div></section>`;
+  const cv=$("#tank"),dpr=Math.min(2,window.devicePixelRatio||1);cv.width=TK.W*dpr;cv.height=TK.H*dpr;cv.getContext("2d").setTransform(dpr,0,0,dpr,0,0);
+  if(!SIM)SIM=newSim();SIM.sed=document.createElement("canvas");SIM.sed.width=TK.W*dpr;SIM.sed.height=TK.H*dpr;SIM.sed.getContext("2d").setTransform(dpr,0,0,dpr,0,0);redrawSed();
+  bindLens("tank");renderP2();loop();
+}
+function pour(kind){
+  if(!SIM||SIM.falling.length||SIM.press)return;
+  if(Math.min(...SIM.h)<170){toast("수조가 가득 찼어요. 수조 비우기를 눌러요");return}
+  const R=SIM.R,kinds=kind==="mix"?["gravel","sand","mud"]:[kind],f=kind==="mix"?.55:1,W=TK.x1-TK.x0;
+  SIM.cur={kind,bottom:[...SIM.h],count:0};
+  kinds.forEach(k=>{const T=TYPES[k],n=Math.round(T.n*f);for(let j=0;j<n;j++){const r=T.r[0]+R()*(T.r[1]-T.r[0]);
+    SIM.falling.push({k,r,x:TK.x0+20+R()*(W-40),y:20+R()*70,v:T.v*(.85+R()*.3),ph:R()*6,c:shade(T.hex,R()*.36-.18),dh:(T.T*f*W/n)/(2*r)})}});
+  SIM.cur.count=SIM.falling.length;
+  S.s2.pours.push(kind);if(kind==="mix")S.s2.mixed=true;renderP2();
+}
+function settle(p){
+  const w=Math.max(p.r,28),c0=Math.floor((p.x-w-TK.x0)/TK.col),c1=Math.floor((p.x+w-TK.x0)/TK.col),n=SIM.h.length,add=p.dh*p.r/w;
+  for(let c=c0;c<=c1;c++){const cc=c<0?-c:c>=n?2*n-2-c:c;SIM.h[Math.max(0,Math.min(n-1,cc))]-=add}
+  SIM.settled.push(p);drawP(SIM.sed.getContext("2d"),p);
+}
+function smooth(){const h=SIM.h,n=h.length;for(let it=0;it<14;it++){const g=[...h];for(let c=0;c<n;c++){const a=g[Math.max(0,c-1)],b=g[Math.min(n-1,c+1)];h[c]=g[c]*.5+(a+b)*.25}}}
+function drawP(x,p){x.fillStyle=p.c;if(p.r<1.5){x.fillRect(p.x-p.r,p.y-p.r,p.r*2,p.r*2)}else{x.beginPath();x.ellipse(p.x,p.y,p.r,p.r*.8,p.ph,0,7);x.fill();
+  if(p.r>5){x.strokeStyle="rgba(40,30,20,.45)";x.lineWidth=1.2;x.stroke();x.fillStyle="rgba(255,255,255,.25)";x.beginPath();x.ellipse(p.x-p.r*.3,p.y-p.r*.3,p.r*.3,p.r*.18,0,0,7);x.fill()}}}
+function layerFill(x,L){
+  const xs=i=>TK.x0+i*TK.col;x.beginPath();L.top.forEach((y,i)=>i?x.lineTo(xs(i),y):x.moveTo(xs(i),y));x.lineTo(TK.x1,L.top[L.top.length-1]);
+  for(let i=L.bottom.length-1;i>=0;i--)x.lineTo(xs(i),L.bottom[i]);x.closePath();
+  if(L.kind==="mix"){const yb=Math.max(...L.bottom),yt=Math.min(...L.top),g=x.createLinearGradient(0,yb,0,yt);g.addColorStop(0,TYPES.gravel.hex);g.addColorStop(.45,TYPES.sand.hex);g.addColorStop(1,TYPES.mud.hex);x.fillStyle=g}
+  else x.fillStyle=TYPES[L.kind].hex;x.globalAlpha=.75;x.fill();x.globalAlpha=1;
+}
+function redrawSed(){const x=SIM.sed.getContext("2d");x.clearRect(0,0,TK.W,TK.H);SIM.layers.forEach(L=>layerFill(x,L));SIM.settled.forEach(p=>drawP(x,p))}
+function loop(){
+  const cv=$("#tank");if(!cv||!SIM){return}const x=cv.getContext("2d");
+  // 물리
+  for(let j=SIM.falling.length-1;j>=0;j--){const p=SIM.falling[j];const inW=p.y>TK.water;p.y+=inW?p.v:p.v*1.6+2;
+    if(inW)p.x+=Math.sin(p.ph+p.y/22)*(p.k==="mud"?.5:.2);p.x=Math.max(TK.x0+p.r,Math.min(TK.x1-p.r,p.x));
+    const c=Math.min(SIM.h.length-1,Math.max(0,Math.floor((p.x-TK.x0)/TK.col)));if(p.y+p.r>=SIM.h[c]){p.y=SIM.h[c]-p.r*.6;settle(p);SIM.falling.splice(j,1)}}
+  if(SIM.falling.length||SIM.cur)smooth();
+  if(SIM.cur&&!SIM.falling.length){const L={kind:SIM.cur.kind,bottom:SIM.cur.bottom,top:[...SIM.h]};SIM.layers.push(L);SIM.cur=null;
+    const sx=SIM.sed.getContext("2d");sx.globalCompositeOperation="destination-over";layerFill(sx,L);sx.globalCompositeOperation="source-over";renderP2()}
+  if(SIM.press>0){const f=Math.pow(.8,1/40),B=TK.bot,sq=y=>B-(B-y)*f;SIM.h=SIM.h.map(sq);SIM.layers.forEach(L=>{L.top=L.top.map(sq);L.bottom=L.bottom.map(sq)});
+    SIM.settled.forEach(p=>p.y=sq(p.y));SIM.press--;SIM.plate=Math.min(...SIM.h)-14;redrawSed();if(!SIM.press){SIM.plate=-1;S.s2.pressed=true;renderP2()}}
+  // 그리기
+  x.clearRect(0,0,TK.W,TK.H);x.drawImage(paintTank(),0,0,TK.W,TK.H);
+  x.drawImage(SIM.sed,0,0,TK.W,TK.H);
+  const muddy=SIM.falling.filter(p=>p.k==="mud").length;if(muddy){x.fillStyle=`rgba(110,105,95,${Math.min(.32,muddy/2400)})`;x.fillRect(TK.x0,TK.water,TK.x1-TK.x0,Math.min(...SIM.h)-TK.water)}
+  SIM.falling.forEach(p=>drawP(x,p));
+  x.strokeStyle="rgba(255,255,255,.8)";x.lineWidth=2;x.beginPath();for(let px=TK.x0;px<=TK.x1;px+=8)x.lineTo(px,TK.water+2*Math.sin(px/30+performance.now()/600));x.stroke();
+  if(!TANK_FIBER)TANK_FIBER=x.createPattern(fiberCanvas(),"repeat");x.save();x.globalCompositeOperation="multiply";x.globalAlpha=.35;x.fillStyle=TANK_FIBER;x.fillRect(0,0,TK.W,TK.H);x.restore();
+  if(SIM.plate>0){x.fillStyle="#8a5f2f";x.fillRect(TK.x0+6,SIM.plate,TK.x1-TK.x0-12,12);x.fillRect(390,40,20,SIM.plate-40)}
+  // 눈금
+  x.fillStyle="#25374a";x.font="14px 'Gowun Dodum', sans-serif";for(let k=0;k<=6;k++){const y=TK.bot-k*60;x.fillRect(TK.x1+8,y,10,2);x.fillText(k*3+" cm",TK.x1+22,y+5)}
+  x.font="18px 'Jua', sans-serif";x.fillText("물",TK.x0+14,TK.water+26);
+  SIM.raf=requestAnimationFrame(loop);
+}
+function renderP2(){
+  const s=S.s2,singles=s.pours.filter(p=>p!=="mix"),busy=SIM&&(SIM.falling.length||SIM.press||SIM.cur);
+  const kindsSeq=singles,distinct=new Set(singles).size;
+  const m1=singles.length>=3&&distinct>=2,m2=s.mixed,m3=s.pressed;
+  const first=singles[0]?TYPES[singles[0]].name:"";
+  const box=(on,t)=>`<li style="list-style:none;display:flex;gap:8px;align-items:center"><span class="sw" style="background:${on?"var(--ok)":"#fff"};border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px">${on?"✓":""}</span>${t}</li>`;
+  let h=guideHTML(busy?"알갱이가 가라앉는 모습을 잘 보세요.":"퇴적물 버튼을 눌러 수조에 차례로 넣어 보세요.");
+  h+=`<div class="card"><h3>퇴적물 쌓기</h3><div class="row">
+    <button class="btn" type="button" data-p="gravel" ${busy?"disabled":""}><span class="sw" style="background:${TYPES.gravel.hex};display:inline-block;vertical-align:-3px"></span> 자갈 넣기</button>
+    <button class="btn" type="button" data-p="sand" ${busy?"disabled":""}><span class="sw" style="background:${TYPES.sand.hex};display:inline-block;vertical-align:-3px"></span> 모래 넣기</button>
+    <button class="btn" type="button" data-p="mud" ${busy?"disabled":""}><span class="sw" style="background:${TYPES.mud.hex};display:inline-block;vertical-align:-3px"></span> 진흙 넣기</button></div>
+    <div class="row"><button class="btn" type="button" data-p="mix" ${busy?"disabled":""}>세 가지 섞어 넣기</button>
+    <button class="btn" type="button" id="pressBtn" ${busy||!SIM||!SIM.layers.length?"disabled":""}>위에서 꾹 누르기</button>
+    <button class="btn" type="button" id="resetBtn" ${busy?"disabled":""}>수조 비우기</button>${toolBtn()}</div>
+    <p class="small">넣은 순서: ${s.pours.length?s.pours.map((p,k)=>`${k+1}. ${p==="mix"?"섞어 넣기":TYPES[p].name}`).join(" · "):"아직 없음"}</p></div>`;
+  h+=`<div class="card"><h3>실험 미션</h3><ul style="margin:0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:14px">
+    ${box(m1,"서로 다른 퇴적물을 하나씩 3번 넣기")}${box(m2,"세 가지를 섞어 한 번에 넣기")}${box(m3,"위에서 꾹 누르기")}</ul></div>`;
+  const Q=(id,q,opts,ans,hints,okMsg)=>{const st=s.q[id]||{};return `<div class="card"><h3>${q}</h3><div class="opts">${opts.map(o=>`<button class="opt ${st.ok&&o===ans?"ok":""}" type="button" data-q="${id}" data-v="${o}" ${st.ok?"disabled":""} aria-pressed="${st.pick===o}">${o}</button>`).join("")}</div>
+     ${st.ok?`<div class="okmsg">${okMsg}</div>`:st.hint?`<div class="hint">${st.hint}</div>`:""}</div>`};
+  window._Q2={q1:{ans:"맨 아래",hint:{"맨 위":"단면 맨 위 층을 돋보기로 보고, 처음 넣은 것과 같은지 비교해요.","가운데":"넣은 순서 목록과 단면 층을 아래부터 하나씩 짝지어 보세요."}},
+    q2:{ans:"자갈",hint:{"모래":"섞어 넣을 때 어떤 알갱이가 가장 먼저 바닥에 닿았는지 다시 보세요.","진흙":"진흙은 물을 뿌옇게 만들며 천천히 내려왔어요. 가장 먼저 닿은 것은 무엇일까요?"}},
+    q3:{ans:"얇아졌지만 순서는 그대로다",hint:{"순서가 뒤바뀌었다":"누르기 전에 본 층의 순서와 지금 순서를 비교해요.","더 두꺼워졌다":"옆의 cm 눈금으로 누르기 전후 높이를 비교해요."}}};
+  const qs=[[m1,()=>Q("q1",`처음 넣은 ${first}은 단면 어디에 있나요?`,["맨 위","가운데","맨 아래"],"맨 아래",0,"")],
+    [m2,()=>Q("q2","섞어 넣었을 때 가장 아래에 모인 알갱이는?",["모래","진흙","자갈"],"자갈",0,"")],
+    [m3,()=>Q("q3","누른 뒤 지층은 어떻게 되었나요?",["더 두꺼워졌다","순서가 뒤바뀌었다","얇아졌지만 순서는 그대로다"],"얇아졌지만 순서는 그대로다",0,"")]];
+  const cur=qs.findIndex(([on],k)=>on&&!(s.q["q"+(k+1)]&&s.q["q"+(k+1)].ok));if(cur>=0)h+=qs[cur][1]();
+
+  const allOk=m1&&m2&&m3&&["q1","q2","q3"].every(k=>s.q[k]&&s.q[k].ok);
+  if(allOk){if(!S.done[2]){complete(2);
+      addNote("fact",2,"모형에서 먼저 넣은 퇴적물이 아래에, 나중에 넣은 퇴적물이 위에 쌓였다.","s2-a");
+      addNote("fact",2,"섞어 넣었더니 큰 자갈이 먼저 가라앉고 고운 진흙은 가장 늦게 가라앉았다.","s2-b");
+      addNote("fact",2,"위에서 누르자 층은 얇아졌지만 쌓인 순서는 바뀌지 않았다.","s2-c");toast("지층 만들기 완료!")}
+    h+=nextCard(2,"모형 실험을 마쳤어요!")}
+  $("#panel").innerHTML=h;placeGuide();bindTool();bindGo();
+  $$("[data-p]").forEach(b=>b.onclick=()=>pour(b.dataset.p));
+  const pb=$("#pressBtn");if(pb)pb.onclick=()=>{if(SIM&&!SIM.falling.length&&!SIM.press){SIM.press=40;renderP2()}};
+  const rb=$("#resetBtn");if(rb)rb.onclick=()=>{const sed=SIM.sed;const raf=SIM.raf;SIM=Object.assign(newSim(),{sed,raf});redrawSed();S.s2.pours=[];renderP2()};
+  $$("[data-q]").forEach(b=>b.onclick=()=>{const id=b.dataset.q,v=b.dataset.v,cfg=window._Q2[id];
+    s.q[id]={pick:v,ok:v===cfg.ans,hint:v===cfg.ans?"":cfg.hint[v]};if(v!==cfg.ans){S.lookAgain++;renderP2();say(cfg.hint[v],"think",true)}else{renderP2();say("좋아요! 다음 미션도 해 봐요.")}});
+}
+
+/* ---------- 3. 시간의 순서 ---------- */
+function renderS3(){
+  $("#app").innerHTML=`<section class="stage"><div class="scene-col"><div class="scene" id="scene">${cliffSVG("order")}</div>
+   <p class="scene-cap"><span>탐사 기록: 이 절벽의 지층은 뒤집히거나 크게 휘지 않았어요.</span></p></div><div class="panel" id="panel"></div></section>`;
+  $$(".layer").forEach(g=>{const f=()=>{const i=+g.dataset.i;if(!S.s3.slots.includes(i)){S.s3.pick=i;renderP3()}};g.onclick=f;g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();f()}}});
+  renderP3();
+}
+function renderP3(){
+  const s=S.s3,pool=shuffle([0,1,2,3,4],11).filter(i=>!s.slots.includes(i));
+  $$(".layer").forEach(g=>{g.classList.toggle("sel",s.pick===+g.dataset.i);g.classList.toggle("done",s.slots.includes(+g.dataset.i))});
+  const lc=i=>{const L=LAYERS[i];return `<span class="sw" style="background:${L.paint||L.hex}"></span><span><b>${L.L} 지층</b> <span class="small">${GRAIN[L.grain].n} · ${THICK[L.thick].n}</span></span>`};
+  let h=guideHTML("어느 지층이 먼저 쌓였을까요?<br>카드를 누르고 빈칸을 눌러 순서대로 놓아요.");
+  if(!s.ok)h+=`<div class="caution"><b>조건 확인</b> 지층이 뒤집히거나 크게 변형되지 않았다면, 아래에 있는 지층이 먼저 쌓였어요.</div>`;
+  if(!s.ok)h+=`<div class="card"><h3>지층 카드</h3><div class="pool">${pool.length?pool.map(i=>`<button class="lcard" type="button" draggable="true" data-c="${i}" aria-pressed="${s.pick===i}">${lc(i)}</button>`).join(""):'<span class="small">모든 카드를 놓았어요.</span>'}</div></div>`;
+  const pos=["1번째 (가장 먼저)","2번째","3번째","4번째","5번째 (가장 나중)"];
+  if(s.ok)h+=`<div class="card"><h3>쌓인 순서 ✓</h3><p style="margin:0;font-size:17px">먼저 <b>라 → 마 → 가 → 나 → 다</b> 나중</p></div>`;
+  else h+=`<div class="card"><h3>쌓인 순서</h3><div class="slots">${s.slots.map((v,k)=>`<button class="slot ${v!=null?"filled":""} ${s.bad.includes(k)?"bad":""} ${s.ok?"good":""}" type="button" data-slot="${k}" ${s.ok?"disabled":""}>
+     <span class="pos">${pos[k]}</span>${v!=null?`<span class="row" style="gap:8px">${lc(v)}</span>`:'<span class="small">여기에 놓기</span>'}</button>`).join("")}</div>
+     ${s.ok?"":`<button class="btn primary" id="chk3" type="button" ${s.slots.includes(null)?"disabled":""}>순서 확인</button>`}</div>`;
+  if(s.ok){
+    const opts=["언제나 아래 지층이 먼저 쌓였다.","뒤집히거나 크게 변형되지 않았다면 아래 지층이 먼저 쌓였다.","색이 진한 지층이 먼저 쌓였다."];
+    h+=`<div class="card"><h3>탐정 질문: 어떻게 말하는 것이 가장 정확할까요?</h3><div class="opts" style="flex-direction:column">${opts.map((o,k)=>`<button class="opt ${s.concept===1&&k===1?"ok":""}" type="button" data-cp="${k}" ${s.concept===1?"disabled":""}>${o}</button>`).join("")}</div>
+      ${s.concept===1?'<div class="okmsg">정확해요! 땅이 크게 휘거나 뒤집히면 순서가 달라 보일 수 있어요.</div>':s.conceptHint?`<div class="hint">${s.conceptHint}</div>`:""}</div>`;
+  }
+  if(s.ok&&s.concept===1)h+=nextCard(3,"쌓인 순서를 밝혀냈어요!");
+  $("#panel").innerHTML=h;placeGuide();bindGo();
+  $$(".lcard").forEach(b=>{b.onclick=()=>{s.pick=+b.dataset.c;renderP3()};b.ondragstart=e=>{e.dataTransfer.setData("text/plain",b.dataset.c);s.pick=+b.dataset.c}});
+  $$(".slot").forEach(b=>{const k=+b.dataset.slot;
+    const put=i=>{const was=s.slots.indexOf(i);if(was>=0)s.slots[was]=null;s.slots[k]=i;s.pick=null;s.bad=[];renderP3()};
+    b.onclick=()=>{if(s.pick!=null)put(s.pick);else if(s.slots[k]!=null){s.slots[k]=null;s.bad=[];renderP3()}};
+    b.ondragover=e=>e.preventDefault();b.ondrop=e=>{e.preventDefault();put(+e.dataTransfer.getData("text/plain"))}});
+  const c=$("#chk3");if(c)c.onclick=()=>{s.bad=s.slots.map((v,k)=>v!==k?k:-1).filter(k=>k>=0);
+    if(!s.bad.length){s.ok=true;complete(3);addNote("inf",3,"쌓인 순서(먼저→나중): 라 → 마 → 가 → 나 → 다. 지층이 뒤집히거나 크게 변형되지 않았다는 조건에서 아래층이 먼저 쌓였다고 추론했다.","s3");
+      toast("순서가 맞아요!");renderP3();say("맞아요! 마지막으로 탐정 질문에 답해 봐요.")}
+    else{S.lookAgain++;renderP3();say(`${s.bad.length}칸을 다시 보세요. 절벽에서 맨 아래 지층부터 위로 한 칸씩 올라가며 카드와 비교해요.`,"think",true)}};
+  $$("[data-cp]").forEach(b=>b.onclick=()=>{const k=+b.dataset.cp;s.concept=k;
+    s.conceptHint=k===0?"땅이 크게 휘거나 뒤집힌 절벽에서도 같다고 할 수 있을까요? 조건을 생각해요.":k===2?"색은 날씨나 성분에 따라 달라요. 색이 쌓인 순서를 알려 줄까요?":"";
+    if(k!==1){S.lookAgain++;renderP3();say(s.conceptHint,"think",true)}else{renderP3();say("훌륭해요. 조건까지 챙기는 게 진짜 탐정이에요.")}});
+}
+
+/* ---------- 4. 화석 조사 ---------- */
+const FOS={
+  shell:{layer:2,title:"가 지층의 화석",
+    id:{q:"무엇의 화석일까요?",opts:["물고기 뼈","조개","나뭇잎"],ans:"조개",hint:"줄무늬가 한 점에서 부채처럼 퍼지는지 확대 그림을 보세요."},
+    fact:"가 지층에서 부채 모양 줄무늬가 있는 조개 화석을 찾았다.",
+    clues:[{k:"fossil",t:"조개 화석"},{k:"grain",t:"아주 고운 진흙 알갱이 (가 지층)"},{k:"ripple",t:"바로 위 나 지층의 물결 자국"},{k:"color",t:"짙은 회색 (가 지층)"}],
+    env:{opts:["높은 산꼭대기였다.","짙은 회색이니 깊은 바다였다.","잔잔한 물속(얕은 바다나 호수)이었을 가능성이 높다."],ans:2,
+      hints:["조개는 어디에서 사나요? 지금은 절벽이어도 쌓일 때 환경은 달랐을 수 있어요.","색만으로 환경을 정할 수 없어요. 화석과 알갱이 단서를 함께 보세요."]},
+    inf:"가 지층이 쌓일 때 이곳은 잔잔한 물속(얕은 바다나 호수)이었을 가능성이 높다."},
+  leaf:{layer:4,title:"다 지층의 화석",
+    id:{q:"무엇의 화석일까요?",opts:["나뭇잎","새 깃털","조개"],ans:"나뭇잎",hint:"가운데 굵은 줄에서 작은 줄이 갈라지는지 보세요. 잎맥일까요, 깃털일까요?"},
+    fact:"다 지층에서 잎맥이 보이는 나뭇잎 화석을 찾았다.",
+    clues:[{k:"fossil",t:"나뭇잎 화석"},{k:"grain",t:"고운 진흙 알갱이 (다 지층)"},{k:"intact",t:"잎이 찢기지 않고 잎맥까지 남아 있음"},{k:"color",t:"연한 회색 (다 지층)"}],
+    env:{opts:["깊은 바다 한가운데였다고 확실히 말할 수 있다.","근처에 식물이 자라는 땅이 있었고, 잔잔한 물에 잎이 묻혔을 가능성이 있다.","뜨겁고 메마른 사막이었다."],ans:1,
+      hints:["나뭇잎은 어디에서 자라나요? 그리고 '확실히'라고 말할 만큼 단서가 충분할까요?","고운 진흙은 물이 잔잔할 때 가라앉아요. 2단계 모형 실험을 떠올려요."]},
+    inf:"다 지층이 쌓일 무렵 근처에 식물이 자라는 땅이 있었고, 잔잔한 물에 잎이 묻혔을 가능성이 있다."}
+};
+const FOS_URL={};
+function paintFossil(kind){
+  if(FOS_URL[kind])return FOS_URL[kind];
+  const P=painter(320,200,2),x=P.ctx,R=rng(kind==="shell"?5:6),base=kind==="shell"?"#737a83":"#c2bcae";
+  x.fillStyle=PAPER;x.fillRect(0,0,320,200);
+  wash(P,rectPts(-20,-20,340,220),base,{R,n:26,a:.085,v:.15,edge:0,gran:.22,lifts:{n:7,box:[0,0,320,200],rx:60,ry:25,a:.13}});
+  for(let k=0;k<16;k++){const y=k*13+R()*5;ink(x,line(-5,y,325,y+gauss(R)*2,14,.5,R),{R,w:.5+R()*.8,a:.16,color:shade(base,-.55),passes:1,gap:.3})}
+  if(kind==="shell"){
+    const cx=160,cy=96,h=[cx,cy+62],arc=[];for(let k=0;k<=24;k++){const a=(198+k*144/24)*Math.PI/180;arc.push([cx+Math.cos(a)*66,cy+6+Math.sin(a)*66])}
+    const pts=[h,...arc].map(p=>[p[0],p[1],1]);
+    wash(P,pts.map(p=>[p[0]+5,p[1]+6,1]),"#2b2f34",{R,n:8,a:.07,v:.05,edge:0});
+    x.save();x.globalAlpha=.94;x.fillStyle="#ede5d2";poly(x,deform(pts,1,.02,R));x.fill();x.restore();
+    wash(P,[[cx,cy+62],[cx+60,cy-10],[cx+66,cy+10],[cx+20,cy+58]].map(p=>[p[0],p[1],1]),"#b9a988",{R,n:10,a:.06,v:.3,edge:0,mask:t=>{poly(t,pts);t.fill()}});
+    for(let k=0;k<=24;k+=2){const e=arc[k];ink(x,[h,[h[0]+(e[0]-h[0])*.25,h[1]+(e[1]-h[1])*.25],[h[0]+(e[0]-h[0])*.6,h[1]+(e[1]-h[1])*.6],[h[0]+(e[0]-h[0])*.97,h[1]+(e[1]-h[1])*.97]],{R,w:1,a:.5,passes:1})}
+    for(const f of [.3,.5,.68,.85]){const p=arc.map(e=>[h[0]+(e[0]-h[0])*f,h[1]+(e[1]-h[1])*f]);ink(x,p,{R,w:.6,a:.32,passes:1,gap:.2})}
+    const ear=[[h[0]-16,h[1]-4],[h[0]+16,h[1]-4],[h[0]+10,h[1]+6],[h[0]-10,h[1]+6]];x.save();x.fillStyle="#ddd2ba";poly(x,ear);x.fill();x.restore();ink(x,[...ear,ear[0]],{R,w:.8,a:.6,passes:1});
+    ink(x,[...pts,pts[0]],{R,w:1.3,a:.75});
+  }else{
+    const cx=158,cy=100,rot=-.22,tr=p=>[cx+p[0]*Math.cos(rot)-p[1]*Math.sin(rot),cy+p[0]*Math.sin(rot)+p[1]*Math.cos(rot),1],pts=[];
+    for(let k=0;k<=30;k++){const t=-1+k/15;pts.push(tr([t*104,-40*(1-t*t)*(1+.18*t)]))}for(let k=29;k>=1;k--){const t=-1+k/15;pts.push(tr([t*104,40*(1-t*t)*(1+.18*t)]))}
+    wash(P,pts,"#6a6638",{R,n:20,a:.075,v:.03,pre:1,edge:.45,gran:.18,lifts:{n:4,box:[80,70,240,130],rx:30,ry:10,a:.15}});
+    ink(x,[tr([-128,2]),tr([-104,0]),tr([104,0])],{R,w:1.6,a:.75});
+    for(let k=-6;k<=6;k++){if(!k)continue;const t=k/7.2,w0=40*(1-t*t)*(1+.18*t);
+      for(const sg of [-1,1])ink(x,[tr([t*100-10,0]),tr([t*100,sg*w0*.5]),tr([t*100+8,sg*w0*.92])],{R,w:.8,a:.55,passes:1})}
+    for(let k=0;k<40;k++){const t=-.9+R()*1.8,w0=40*(1-t*t),y=(R()*2-1)*w0*.8;ink(x,[tr([t*100,y]),tr([t*100+4,y+gauss(R)*3])],{R,w:.4,a:.3,passes:1})}
+  }
+  ink(x,[[244,184],[284,184]],{R,w:1.6,a:.85,color:"#25374a",passes:1});ink(x,[[244,180],[244,188]],{R,w:1,a:.85,passes:1});ink(x,[[284,180],[284,188]],{R,w:1,a:.85,passes:1});
+  x.fillStyle="#25374a";x.font="11px 'Gowun Dodum', sans-serif";x.fillText("1 cm",252,178);
+  paperTexture(P,.8);
+  return FOS_URL[kind]=P.c.toDataURL("image/jpeg",.9);
+}
+function fossilBig(f){return `<img src="${paintFossil(f)}" alt="${f==="shell"?"조개 화석":"나뭇잎 화석"}을 확대한 수채화" style="width:100%;max-height:24vh;object-fit:cover;display:block;border-radius:12px;border:4px solid #c99a3a">`}
+let TANK_BG=null,TANK_FIBER=null;
+function paintTank(){
+  if(TANK_BG)return TANK_BG;
+  const s=Math.min(2,window.devicePixelRatio||1),P=painter(TK.W,TK.H,s),x=P.ctx,R=rng(88);
+  x.fillStyle=PAPER;x.fillRect(0,0,TK.W,TK.H);
+  wash(P,rectPts(-20,-20,820,TK.bot+12),"#cfdde3",{R,n:18,a:.05,v:.2,edge:0,lifts:{n:6,box:[0,0,800,450],rx:90,ry:40,a:.3}});
+  wash(P,rectPts(-20,TK.bot+8,820,540,30,.15),"#c69a62",{R,n:20,a:.07,v:.08,edge:.3});
+  for(let k=0;k<14;k++){const y=TK.bot+16+k*3.4;ink(x,line(-5,y,805,y+gauss(R)*1.5,20,.5,R),{R,w:.6,a:.25,color:"#6b4425",passes:1,gap:.25})}
+  wash(P,[[TK.x0-30,TK.bot+4],[TK.x1+30,TK.bot+4],[TK.x1+36,TK.bot+16],[TK.x0-36,TK.bot+16]],"#4a3c30",{R,n:10,a:.06,v:.2,edge:0});
+  wash(P,[[TK.x0,TK.water],[TK.x1,TK.water],[TK.x1,TK.bot],[TK.x0,TK.bot]].map(p=>[p[0],p[1],.1]),"#86bccd",{R,n:20,a:.06,v:.05,edge:0,
+    mask:t=>{t.fillRect(TK.x0,TK.water,TK.x1-TK.x0,TK.bot-TK.water)}});
+  wash(P,[[TK.x0,60],[TK.x1,60],[TK.x1,TK.water],[TK.x0,TK.water]].map(p=>[p[0],p[1],.1]),"#dbe9ee",{R,n:8,a:.05,v:.05,edge:0,mask:t=>t.fillRect(TK.x0,60,TK.x1-TK.x0,TK.water-60)});
+  x.save();x.globalAlpha=.4;x.fillStyle="#fff";x.fillRect(TK.x0+10,74,7,TK.bot-110);x.fillRect(TK.x0+22,90,3,TK.bot-160);x.fillRect(TK.x1-26,84,4,TK.bot-150);x.restore();
+  ink(x,line(TK.x0-4,58,TK.x0-4,TK.bot+4,10,.25,R),{R,w:3,a:.8,color:"#3e5b68"});ink(x,line(TK.x0-4,TK.bot+4,TK.x1+4,TK.bot+4,10,.25,R),{R,w:3,a:.8,color:"#3e5b68"});
+  ink(x,line(TK.x1+4,TK.bot+4,TK.x1+4,58,10,.25,R),{R,w:3,a:.8,color:"#3e5b68"});ink(x,line(TK.x0-8,58,TK.x0+4,58,4,.2,R),{R,w:3,a:.8,color:"#3e5b68"});ink(x,line(TK.x1-4,58,TK.x1+8,58,4,.2,R),{R,w:3,a:.8,color:"#3e5b68"});
+  paperTexture(P,.8);
+  return TANK_BG=P.c;
+}
+function renderS4(){
+  $("#app").innerHTML=`<section class="stage"><div class="scene-col"><div class="scene" id="scene">${cliffSVG("fossil")}</div>
+   <p class="scene-cap"><span>반짝이는 동그라미를 눌러 화석을 조사해요</span></p></div><div class="panel" id="panel"></div></section>`;
+  $$(".hot").forEach(g=>{const f=()=>{S.s4.sel=g.dataset.f;renderP4()};g.onclick=f;g.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();f()}}});
+  renderP4();
+}
+function renderP4(){
+  const s=S.s4,k=s.sel;
+  $$(".hot").forEach(g=>g.classList.toggle("done",s.f[g.dataset.f].step>=3));
+  let h=guideHTML(k?"화석 하나만 보고 정하지 말고, 여러 단서를 함께 모아요.":"절벽에서 화석 두 개를 찾았어요.<br>반짝이는 곳을 눌러 보세요.");
+  h+=`<div class="row">${["shell","leaf"].map(f=>`<button class="btn" type="button" data-fs="${f}" ${k===f?'style="border-color:#c99a3a;background:#fff6dc"':""}>${s.f[f].step>=3?"✓ ":""}${FOS[f].title}</button>`).join("")}</div>`;
+  const both0=s.f.shell.step>=3&&s.f.leaf.step>=3;
+  if(k&&!both0){
+    const F=FOS[k],st=s.f[k];
+    h+=`<div class="card"><h3><span class="ltag">${LAYERS[F.layer].L}</span> ${F.title}</h3>${fossilBig(k)}`;
+    if(st.step>=1)h+=`<div class="note fact"><span class="chip fact">사실</span> ${F.fact}</div>`;
+    if(st.step>=2)h+=`<p class="small">함께 쓴 단서: ${F.clues.filter(c=>st.clues.includes(c.k)).map(c=>c.t).join(", ")}${st.clues.includes("color")?" (색은 참고만)":""}</p>`;
+    if(st.step>=3)h+=`<div class="note inf"><span class="chip inf">추론</span> ${F.inf}</div>`;
+    if(st.step===0)h+=`<div class="grp stack"><span>① 관찰: ${F.id.q}</span><div class="opts">${F.id.opts.map(o=>`<button class="opt" type="button" data-id="${o}">${o}</button>`).join("")}</div>${st.hint?`<div class="hint">${st.hint}</div>`:""}</div>`;
+    if(st.step===1)h+=`<div class="grp stack"><span>② 단서 모으기: 함께 쓸 단서를 모두 골라요</span><div class="opts">
+      ${F.clues.map(c=>`<button class="opt" type="button" data-cl="${c.k}" aria-pressed="${st.clues.includes(c.k)}"><span class="chip fact">사실</span>${c.t}</button>`).join("")}</div>
+      <div><button class="btn" type="button" id="clueOk">단서 확정</button></div>${st.hint?`<div class="hint">${st.hint}</div>`:""}</div>`;
+    if(st.step===2)h+=`<div class="grp stack"><span>③ 추론: 가장 알맞은 설명은?</span><div class="opts" style="flex-direction:column">
+      ${F.env.opts.map((o,j)=>`<button class="opt" type="button" data-env="${j}">${o}</button>`).join("")}</div>${st.hint?`<div class="hint">${st.hint}</div>`:""}</div>`;
+    h+=`</div>`;
+  }
+  const both=s.f.shell.step>=3&&s.f.leaf.step>=3;
+  if(both){
+    const opts=["그때는 생물이 두 마리만 살았기 때문이다.","죽은 생물 대부분은 썩거나 부서져 화석으로 남지 못하기 때문이다.","화석은 모두 땅 위로 드러나 있기 때문이다."];
+    h+=`<div class="card"><h3>탐정 질문: 절벽 전체에서 화석을 두 개만 찾았어요. 왜 그럴까요?</h3><div class="opts" style="flex-direction:column">
+      ${opts.map((o,j)=>`<button class="opt ${s.q===1&&j===1?"ok":""}" type="button" data-fq="${j}" ${s.q===1?"disabled":""}>${o}</button>`).join("")}</div>
+      ${s.q===1?'<div class="okmsg">맞아요. 빨리 묻히고 단단한 부분이 있을 때 화석으로 남기 쉬워요. 그래서 화석은 옛 생물의 일부만 보여 줘요.</div>':s.qHint?`<div class="hint">${s.qHint}</div>`:""}</div>`;
+  }
+  if(both&&s.q===1)h=h.replace('<div class="card"><h3>탐정 질문',nextCard(4,"화석 조사를 마쳤어요!")+'<div class="card"><h3>탐정 질문');
+  $("#panel").innerHTML=h;placeGuide();bindGo();
+  $$("[data-fs]").forEach(b=>b.onclick=()=>{s.sel=b.dataset.fs;renderP4()});
+  $$("[data-fq]").forEach(b=>b.onclick=()=>{const j=+b.dataset.fq;if(j===1){s.q=1;s.qHint="";complete(4);addNote("fact",4,"모든 생물이 화석이 되지는 않는다. 화석은 옛 생물의 일부만 보여 준다.","s4-q");renderP4();toast("화석 조사 완료!")}
+    else{s.qHint=j===0?"화석이 적다고 생물이 적었다고 단정할 수 있을까요? 생물이 죽은 뒤 어떻게 되는지 생각해요.":"화석은 대부분 땅속 지층 안에 있어요. 생물이 화석이 되려면 어떤 일이 필요할까요?";
+      S.lookAgain++;renderP4();say(s.qHint,"think",true)}});
+  if(!k||both0)return;const F=FOS[k],st=s.f[k];
+  $$("[data-id]").forEach(b=>b.onclick=()=>{if(b.dataset.id===F.id.ans){st.step=1;st.hint="";addNote("fact",4,F.fact,"s4-f-"+k);renderP4();say("관찰 끝! 이제 환경을 추론할 단서를 모아요.")}
+    else{st.hint=F.id.hint;S.lookAgain++;renderP4();say(F.id.hint,"think",true)}});
+  $$("[data-cl]").forEach(b=>b.onclick=()=>{const c=b.dataset.cl,i=st.clues.indexOf(c);if(i>=0)st.clues.splice(i,1);else st.clues.push(c);st.hint="";renderP4()});
+  const co=$("#clueOk");if(co)co.onclick=()=>{const c=st.clues,hasF=c.includes("fossil"),hasR=c.some(x=>x!=="fossil"&&x!=="color");
+    let hint="";if(!c.length)hint="단서를 하나 이상 골라요.";else if(!hasF)hint="이 조사의 주인공인 화석 단서도 함께 골라요.";
+    else if(!hasR)hint=c.includes("color")?"색은 참고만 할 수 있어요. 알갱이 크기나 지층 모습 같은 단서를 더 찾아요.":"화석 하나만으로 환경을 확정하기 어려워요. 알갱이 크기나 지층 모습 단서도 함께 골라요.";
+    if(hint){st.hint=hint;S.lookAgain++;renderP4();say(hint,"think",true)}else{st.step=2;st.hint="";renderP4();say("여러 단서를 모았어요. 이제 추론해 봐요.")}};
+  $$("[data-env]").forEach(b=>b.onclick=()=>{const j=+b.dataset.env;if(j===F.env.ans){st.step=3;st.hint="";addNote("inf",4,F.inf,"s4-i-"+k);renderP4();toast("추론을 수첩에 적었어요");
+      say(s.f.shell.step>=3&&s.f.leaf.step>=3?"화석 두 개를 모두 조사했어요. 탐정 질문에 답해 봐요.":"다른 화석도 조사해 봐요.")}
+    else{const hi=F.env.hints[j>F.env.ans?j-1:j];st.hint=hi;S.lookAgain++;renderP4();say(hi,"think",true)}});
+}
+
+/* ---------- 5. 탐정 보고서 ---------- */
+const CARDS={
+  F1:{t:"fact",c:1,x:"가 지층에 조개 화석이 있고, 알갱이가 아주 고운 진흙이다."},
+  F2:{t:"fact",c:2,x:"라 지층이 절벽 맨 아래에 있다."},
+  F3:{t:"fact",c:3,x:"다 지층에서 잎맥이 보이는 나뭇잎 화석을 찾았다."},
+  FX:{t:"fact",c:0,x:"가 지층의 색이 짙은 회색이다.",h:"색만으로는 환경을 알기 어려워요. 화석이나 알갱이 사실 카드를 찾아봐요."},
+  I1:{t:"inf",c:1,x:"가 지층이 쌓일 때 이곳은 잔잔한 물속이었을 가능성이 높다."},
+  I2:{t:"inf",c:2,x:"라 지층이 가장 먼저 쌓였을 것이다."},
+  I3:{t:"inf",c:3,x:"다 지층이 쌓일 무렵 근처에 식물이 자라는 땅이 있었을 것이다."},
+  IX:{t:"inf",c:0,x:"다 지층은 정확히 1만 년 전에 쌓였다.",h:"정확한 나이는 색이나 화석 하나로 알 수 없어요. 단서로 말할 수 있는 만큼만 추론해요."},
+  E1:{t:"why",c:1,x:"조개는 물속에서 살고, 고운 진흙은 물이 잔잔할 때 가라앉는다."},
+  E2:{t:"why",c:2,x:"지층이 뒤집히거나 크게 변형되지 않았다면 아래층이 먼저 쌓인다."},
+  E3:{t:"why",c:3,x:"나뭇잎은 육지 식물에서 떨어져 물에 실려 와 묻힐 수 있다."},
+  EX:{t:"why",c:0,x:"모든 생물은 죽으면 화석이 된다.",h:"모든 생물이 화석이 되지는 않아요. 4단계 탐정 질문을 떠올려요."}
+};
+const TYPE_N={fact:"관찰한 사실",inf:"추론",why:"근거"},TYPE_IDX={fact:0,inf:1,why:2};
+function renderS5(){
+  $("#app").innerHTML=`<section class="stage board-stage"><div class="scene-col"><div class="board" id="board"></div></div><div class="panel" id="panel"></div></section>`;renderP5();
+}
+function renderP5(){
+  const s=S.s5,used=s.rows.flat();
+  const slot=(r,k)=>{const id=s.rows[r][k],t=["fact","inf","why"][k];const tg=s.target&&s.target[0]===r&&s.target[1]===k;return `<button class="cslot ${t} ${id?"filled":""} ${tg?"target":""}" type="button" data-r="${r}" data-k="${k}" ${s.ok?"disabled":""}>
+    <span class="chip ${t}">${TYPE_N[t]}</span>${id?esc(CARDS[id].x):`<span class="ph">${tg?"오른쪽에서 카드를 골라요":"눌러서 이 칸 채우기"}</span>`}</button>`};
+  let b=`<div class="board-head"><h2>탐정 보고서</h2><div class="legend"><span class="chip fact">사실 = 본 것</span><span class="chip inf">추론 = 생각한 것</span><span class="chip why">근거 = 그렇게 생각한 까닭</span></div></div>`;
+  b+=s.rows.map((row,r)=>`<div class="chain ${s.res[r]==="ok"?"good":s.res[r]?"bad":""}">${slot(r,0)}<div class="arrow"><b>→</b>그래서</div>${slot(r,1)}<div class="arrow"><b>→</b>왜냐하면</div>${slot(r,2)}</div>
+     ${s.res[r]&&s.res[r]!=="ok"?`<div class="hint">${s.res[r]}</div>`:""}`).join("");
+  if(!s.ok)b+=`<div><button class="btn primary" id="chk5" type="button" ${used.includes(null)?"disabled":""}>보고서 점검</button></div>`;
+  $("#board").innerHTML=b;
+  const TT=["fact","inf","why"];if(!s.tab)s.tab="fact";
+  let h=guideHTML(s.ok?"멋진 보고서예요! 이름을 적고 완성해요.":"빈칸을 누르고 알맞은 카드를 골라요.<br>사실 → 추론 → 근거 순서로 한 줄씩 이어요.");
+  if(!s.ok){const ids=shuffle(Object.keys(CARDS),5).filter(id=>!used.includes(id));
+    h+=`<div class="card"><div class="row" role="tablist">${TT.map(t=>`<button class="btn tab ${t}" type="button" role="tab" data-tab="${t}" aria-selected="${s.tab===t}">${TYPE_N[t]} <span class="small">${ids.filter(id=>CARDS[id].t===t).length}</span></button>`).join("")}</div>
+      <div class="cpool">${ids.filter(id=>CARDS[id].t===s.tab).map(id=>`<button class="ccard ${s.tab}" type="button" draggable="true" data-cc="${id}" aria-pressed="${s.pick===id}">${esc(CARDS[id].x)}</button>`).join("")||'<span class="small">이 종류 카드는 모두 놓았어요.</span>'}</div></div>`;
+    h+=`<div class="caution"><b>보고서 수칙</b> 들어맞지 않는 카드도 섞여 있어요. 단서로 말할 수 있는 만큼만 써요.</div>`;
+  }else{
+    h+=`<div class="card"><h3>보고서 마무리</h3><div class="field"><label for="dname">탐정 이름</label><input id="dname" maxlength="20" value="${esc(s.name)}" placeholder="예: 3모둠 김지층"></div>
+      <div class="field"><label for="dsay">탐정의 한마디 (선택)</label><textarea id="dsay" maxlength="200" placeholder="이 절벽에서 알게 된 점을 한 문장으로 적어요.">${esc(s.say)}</textarea></div>
+      <button class="btn primary" id="fin" type="button">보고서 완성</button></div>`;
+  }
+  $("#panel").innerHTML=h;placeGuide();
+  const nextEmpty=()=>{for(let r=0;r<3;r++)for(let k=0;k<3;k++)if(!s.rows[r][k])return [r,k];return null};
+  const put=(r,k,id)=>{if(!id)return;if(TYPE_IDX[CARDS[id].t]!==k){say(`이 칸에는 ${TYPE_N[TT[k]]} 카드만 놓을 수 있어요. 카드 색을 확인해요.`,"think",true);return}
+    s.rows.forEach(row=>row.forEach((v,j)=>{if(v===id)row[j]=null}));s.rows[r][k]=id;s.pick=null;s.res[r]=null;
+    s.target=nextEmpty();if(s.target)s.tab=TT[s.target[1]];renderP5()};
+  $$("[data-tab]").forEach(b=>b.onclick=()=>{s.tab=b.dataset.tab;s.pick=null;renderP5()});
+  $$(".ccard").forEach(c=>{c.onclick=()=>{const id=c.dataset.cc;if(s.target&&TYPE_IDX[CARDS[id].t]===s.target[1])put(s.target[0],s.target[1],id);else{s.pick=id;renderP5()}};
+    c.ondragstart=e=>{e.dataTransfer.setData("text/plain",c.dataset.cc)}});
+  $$(".cslot").forEach(sl=>{const r=+sl.dataset.r,k=+sl.dataset.k;
+    sl.onclick=()=>{if(s.pick)put(r,k,s.pick);else if(s.rows[r][k]){s.rows[r][k]=null;s.res[r]=null;s.target=[r,k];s.tab=TT[k];renderP5()}else{s.target=[r,k];s.tab=TT[k];renderP5()}};
+    sl.ondragover=e=>e.preventDefault();sl.ondrop=e=>{e.preventDefault();put(r,k,e.dataTransfer.getData("text/plain"))}});
+  const c=$("#chk5");if(c)c.onclick=()=>{
+    s.res=s.rows.map(row=>{const [f,i,e]=row.map(id=>CARDS[id]);
+      const bad=[f,i,e].find(x=>x.c===0);if(bad)return bad.h;
+      if(f.c!==i.c)return "사실과 추론이 같은 지층 이야기인지 다시 확인해요.";
+      if(e.c!==i.c)return "근거 카드가 이 추론의 까닭을 설명하는지 소리 내어 읽어 봐요.";return "ok"});
+    if(s.res.every(x=>x==="ok")){s.ok=true;complete(5);toast("보고서 점검 통과!")}else{S.lookAgain++;say("빨간 줄을 다시 살펴봐요. 각 줄 아래에 단서가 있어요.","think",true)}
+    renderP5()};
+  const fin=$("#fin");if(fin){$("#dname").oninput=e=>s.name=e.target.value;$("#dsay").oninput=e=>s.say=e.target.value;
+    fin.onclick=()=>{if(!s.name.trim()){say("탐정 이름을 적어 주세요.","think",true);$("#dname").focus();return}go(6)}}
+}
+
+/* ---------- 6. 결과 ---------- */
+function renderResult(){
+  const s5=S.s5,today=new Date(),d=`${today.getFullYear()}. ${today.getMonth()+1}. ${today.getDate()}.`;
+  const col=`<svg viewBox="0 0 120 ${7*SC/2+20}" width="64" aria-label="지층 기둥 그림">${LAYERS.map((L,i)=>`<rect x="10" y="${(7-cum[i])*SC/2+10}" width="70" height="${L.t*SC/2}" fill="${L.paint||L.hex}" stroke="#25374a" stroke-width=".8"/>
+     <rect x="10" y="${(7-cum[i])*SC/2+10}" width="70" height="${L.t*SC/2}" fill="url(#pat-${L.grain})"/>
+     <text x="88" y="${(7-cum[i]+L.t/2)*SC/2+15}" font-size="13" fill="#25374a" font-family="Jua, sans-serif">${L.L}</text>`).join("")}</svg>`;
+  $("#app").innerHTML=`<article class="report" id="report">
+   <header><div><h1>지층 탐정단 탐사 보고서</h1><p class="small">사라진 시간의 단서 · ${d} · 탐정 <b style="color:var(--ink);font-size:16px">${esc(s5.name)}</b> · 다시 살펴본 단서 ${S.lookAgain}번</p>
+     <p class="small" style="margin:2px 0 0"><span class="chip fact">사실</span> 관찰한 것 <span class="chip inf">추론</span> 생각한 것 <span class="chip why">근거</span> 그렇게 생각한 까닭</p></div>
+     <div class="actions"><button class="btn primary" id="printBtn" type="button">보고서 인쇄</button><button class="btn" id="backBtn" type="button">보고서 고치기</button><button class="btn" id="restart" type="button">처음부터 다시</button><div class="stamp">조사 완료</div></div></header>
+   <div class="rcols"><div>
+   <section><h2>1. 절벽 관찰 기록 <span class="chip fact">사실</span></h2><div class="tbl-wrap"><table><thead><tr><th>지층</th><th>색</th><th>두께</th><th>알갱이</th><th>특징</th></tr></thead><tbody>
+     ${[...LAYERS].reverse().map(L=>`<tr><td>${L.L}</td><td>${L.color}</td><td>${THICK[L.thick].n} (약 ${L.t} m)</td><td>${GRAIN[L.grain].n}</td><td>${L.fossil==="shell"?"조개 화석":L.fossil==="leaf"?"나뭇잎 화석":L.ripple?"물결 자국":"-"}</td></tr>`).join("")}
+   </tbody></table></div><p class="small">위에서 아래 순서 · 색만으로 나이나 환경을 정하지 않았어요.</p></section>
+   <section><h2>2. 쌓인 순서 <span class="chip inf">추론</span></h2><div class="col-mini">${col}<div style="flex:1;min-width:160px">
+     <p style="margin:0 0 4px;font-size:17px">먼저 → 나중: <b>라 → 마 → 가 → 나 → 다</b></p>
+     <p class="small">조건: 이 절벽의 지층은 뒤집히거나 크게 변형되지 않았다.</p>
+     <p class="small">모형 실험: 먼저 넣은 퇴적물이 아래에 쌓였고, 눌러도 순서는 바뀌지 않았다.</p></div></div></section>
+   </div><div>
+   <section><h2>3. 화석 단서</h2><div style="display:flex;flex-direction:column;gap:4px">
+     <div class="note fact">${FOS.shell.fact}</div><div class="note inf">${FOS.shell.inf}</div>
+     <div class="note fact">${FOS.leaf.fact}</div><div class="note inf">${FOS.leaf.inf}</div>
+     <p class="small">여러 단서를 함께 살폈어요. 모든 생물이 화석이 되지는 않아요.</p></div></section>
+   <section><h2>4. 사실 → 추론 → 근거</h2><div style="display:flex;flex-direction:column;gap:6px">
+     ${s5.rows.map(r=>`<div class="rchain"><div class="fact"><span class="chip fact">사실</span> ${esc(CARDS[r[0]].x)}</div><div class="inf"><span class="chip inf">추론</span> ${esc(CARDS[r[1]].x)}</div><div class="why"><span class="chip why">근거</span> ${esc(CARDS[r[2]].x)}</div></div>`).join("")}</div></section>
+   ${s5.say.trim()?`<section><h2>5. 탐정의 한마디</h2><p style="font-family:var(--f-hand);font-size:22px;margin:0">${esc(s5.say)}</p></section>`:""}
+   </div></div>
+  </article>`;
+  $("#printBtn").onclick=()=>window.print();
+  $("#backBtn").onclick=()=>go(5);
+  $("#restart").onclick=()=>{location.reload()};
+}
+go(0);
+</script>
+</body>
+</html>
